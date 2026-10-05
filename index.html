@@ -33,6 +33,8 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 .cross::before,.cross::after{content:"";position:absolute;background:#fff;box-shadow:0 0 0 1.5px #16213A}
 .cross::before{left:12px;top:3px;width:2px;height:20px}.cross::after{top:12px;left:3px;height:2px;width:20px}
 .cross.hit::before,.cross.hit::after{background:var(--gold)}
+#hurtFlash{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(255,40,40,0) 55%,rgba(220,20,20,.55) 100%);opacity:0;pointer-events:none;transition:opacity .08s}
+#hurtFlash.show{opacity:1;transition:opacity 0s}
 .power{position:absolute;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:160px;height:14px;border:3px solid var(--ink);border-radius:8px;background:rgba(0,0,0,.4);overflow:hidden;display:none}
 .power i{display:block;height:100%;width:0;background:linear-gradient(#ffe08a,var(--gold))}
 .interact{position:absolute;left:50%;bottom:34%;transform:translateX(-50%);background:var(--glass);padding:8px 16px;border-radius:14px;font-weight:800;font-size:15px;display:none;text-align:center;box-shadow:0 3px 0 rgba(0,0,0,.25)}
@@ -79,6 +81,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 <div id="wrap">
   <canvas id="c"></canvas>
   <div class="cross" id="cross"></div>
+  <div id="hurtFlash"></div>
   <div class="power" id="power"><i id="powerI"></i></div>
   <div class="interact" id="interact"></div>
   <div class="hud">
@@ -169,23 +172,32 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08;
+  renderer.physicallyCorrectLights = false;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x8fd3ff); scene.fog = new THREE.Fog(0x8fd3ff, 50, 170);
+  scene.background = new THREE.Color(0xBFE6FF); scene.fog = new THREE.Fog(0xcfeaff, 70, 210);
   const camera = new THREE.PerspectiveCamera(68, 1, 0.08, 400);
   camera.rotation.order = 'YXZ';
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x6f9a6a, 0.78); scene.add(hemi);
-  const sun = new THREE.DirectionalLight(0xfff4e0, 0.85); sun.position.set(30, 45, 15); sun.castShadow = true;
-  sun.shadow.mapSize.set(1536, 1536); Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 140 });
+  const hemi = new THREE.HemisphereLight(0xbfe0ff, 0x6f9a5a, 0.62); scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xfff0d2, 1.15); sun.position.set(30, 45, 15); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0015; Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 140 });
   scene.add(sun, sun.target);
+  const fill = new THREE.DirectionalLight(0xbcd4ff, 0.3); fill.position.set(-25, 20, -20); scene.add(fill);
   function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
   addEventListener('resize', resize); resize();
 
-  // sky
-  const skyGeo = new THREE.SphereGeometry(500, 24, 14); skyGeo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(skyGeo.attributes.position.count * 3), 3));
-  const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })); scene.add(sky);
-  (function paintSky() { const top = new THREE.Color(0x4aa0ff), hor = new THREE.Color(0xdcf2ff), col = skyGeo.attributes.color, pos = skyGeo.attributes.position;
-    for (let i = 0; i < pos.count; i++) { const y = pos.getY(i) / 500, c = hor.clone().lerp(top, Math.pow(Math.max(0, y), 0.55)); col.setXYZ(i, c.r, c.g, c.b); } col.needsUpdate = true; })();
-  const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(16, 20), new THREE.MeshBasicMaterial({ color: 0xfff6c8, fog: false })); sunDisc.position.set(-120, 90, -160); sunDisc.lookAt(0, 0, 0); scene.add(sunDisc);
+  // sky: a smooth vertical-gradient texture mapped onto a dome, instead of a coarse low-poly vertex-coloured sphere
+  function gradientSkyTexture() {
+    const c = document.createElement('canvas'); c.width = 2; c.height = 256; const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 0, 256);
+    g.addColorStop(0, '#2E8FEF'); g.addColorStop(0.35, '#6FBBFF'); g.addColorStop(0.68, '#BFE6FF'); g.addColorStop(1, '#EAF7FF');
+    x.fillStyle = g; x.fillRect(0, 0, 2, 256);
+    const t = new THREE.CanvasTexture(c); t.needsUpdate = true; return t;
+  }
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(480, 24, 16), new THREE.MeshBasicMaterial({ map: gradientSkyTexture(), side: THREE.BackSide, fog: false, depthWrite: false }));
+  scene.add(sky);
+  const sunDisc = new THREE.Mesh(new THREE.CircleGeometry(15, 24), new THREE.MeshBasicMaterial({ color: 0xfff8da, fog: false })); sunDisc.position.set(-130, 95, -170); sunDisc.lookAt(0, 0, 0); scene.add(sunDisc);
+  const sunHalo = new THREE.Mesh(new THREE.CircleGeometry(32, 24), new THREE.MeshBasicMaterial({ color: 0xfff3c0, transparent: true, opacity: 0.35, fog: false, depthWrite: false })); sunHalo.position.copy(sunDisc.position); sunHalo.lookAt(0, 0, 0); scene.add(sunHalo);
   function cloudPuff(x, y, z, s) { const g = new THREE.Group(); const cm = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 });
     [[0, 0, 26], [22, -6, 20], [-22, -4, 18], [38, 3, 15]].forEach(([dx, dy, r]) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r * s, 8, 6), cm); m.position.set(dx * s, dy * s, 0); g.add(m); });
     g.position.set(x, y, z); scene.add(g); return g; }
@@ -537,65 +549,106 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   }
   buildBossArena();
   function makeBossMesh(def) {
-    const g = new THREE.Group(); const s = def.bodyScale, m = STD(def.color, { flatShading: true, emissive: def.color, emissiveIntensity: 0.12 });
-    box(g, 1.6 * s, 2.2 * s, 1.2 * s, m, 0, 1.6 * s, 0); box(g, 1.1 * s, 1.1 * s, 1.1 * s, m, 0, 2.9 * s, 0);
+    const g = new THREE.Group(); const s = def.bodyScale, bodyMat = STD(def.color, { flatShading: true, emissive: def.color, emissiveIntensity: 0.12 });
+    box(g, 1.6 * s, 2.2 * s, 1.2 * s, bodyMat, 0, 1.6 * s, 0); box(g, 1.1 * s, 1.1 * s, 1.1 * s, bodyMat, 0, 2.9 * s, 0);
     const eye = new THREE.MeshBasicMaterial({ color: 0xff3030 }); box(g, 0.2 * s, 0.2 * s, 0.1 * s, eye, -0.3 * s, 3.0 * s, 0.55 * s, false); box(g, 0.2 * s, 0.2 * s, 0.1 * s, eye, 0.3 * s, 3.0 * s, 0.55 * s, false);
-    [-1.1, 1.1].forEach(x => box(g, 0.4 * s, 1.6 * s, 0.4 * s, m, x * s, 1.8 * s, 0));
-    [-0.5, 0.5].forEach(x => box(g, 0.5 * s, 1.1 * s, 0.5 * s, m, x * s, 0.55 * s, 0));
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.3 * s, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffe066 })); core.position.set(0, 1.6 * s, 0.65 * s); g.add(core);
-    g.userData.hitY = 1.6 * s; g.userData.hitR = 1.3 * s;
+    [-1.1, 1.1].forEach(x => box(g, 0.4 * s, 1.6 * s, 0.4 * s, bodyMat, x * s, 1.8 * s, 0));
+    [-0.5, 0.5].forEach(x => box(g, 0.5 * s, 1.1 * s, 0.5 * s, bodyMat, x * s, 0.55 * s, 0));
+    const coreMat = new THREE.MeshBasicMaterial({ color: 0xffe066 });
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.34 * s, 14, 12), coreMat); core.position.set(0, 1.6 * s, 0.68 * s); g.add(core);
+    const coreGlow = new THREE.Mesh(new THREE.SphereGeometry(0.5 * s, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.35 })); coreGlow.position.copy(core.position); g.add(coreGlow);
+    g.userData.hitY = 1.6 * s; g.userData.hitR = 1.3 * s; g.userData.bodyMat = bodyMat; g.userData.coreMat = coreMat; g.userData.coreGlow = coreGlow; g.userData.bodyColor = def.color;
     return g;
   }
   function startBoss(idx) {
     const def = BOSS_DEFS[idx]; const mesh = makeBossMesh(def); mesh.position.set(BOSS_ARENA.x, 0, BOSS_ARENA.z - 10); scene.add(mesh);
-    boss = { def, mesh, x: mesh.position.x, z: mesh.position.z, hp: def.hp, maxHp: def.hp, alive: true, t: 0, fireT: rnd(1.5, 2.5), hitY: 1.6 * def.bodyScale, hitR: 1.1 * def.bodyScale, hurtT: 0 };
+    boss = { def, mesh, x: mesh.position.x, z: mesh.position.z, hp: def.hp, maxHp: def.hp, alive: true, t: 0,
+      fireT: rnd(2.2, 3), windup: 0, mode: 'circle', lungeT: rnd(5, 7.5), lungeDirX: 0, lungeDirZ: 0,
+      hitY: 1.6 * def.bodyScale, hitR: 1.1 * def.bodyScale, hurtT: 0, flashT: 0 };
     $('bossHpBox').style.display = 'block'; $('bossName').textContent = def.icon + ' ' + def.name; updBossHp();
     P.x = BOSS_ARENA.x; P.z = BOSS_ARENA.z + BOSS_ARENA.r - 3; P.yaw = 0; P.zone = 'boss'; bossMode = true;
     P.hearts = 3; updHearts(); $('hearts').style.display = 'flex';
     bossBullets.forEach(b => scene.remove(b.mesh)); bossBullets = [];
-    banner(def.icon + ' ' + def.name, 'Trafiaj w świecący rdzeń!', 2400); SFX.roar();
+    arenaFlash();
+    banner(def.icon + ' ' + def.name, 'Trafiaj w świecący rdzeń! Uważaj na szarże i strzały.', 2800); SFX.roar();
   }
   function updBossHp() { $('bossHpI').style.width = Math.max(0, boss.hp / boss.maxHp * 100) + '%'; }
+  let arenaFlashEl = null;
+  function arenaFlash() {
+    if (!arenaFlashEl) { arenaFlashEl = document.createElement('div'); arenaFlashEl.style.cssText = 'position:absolute;inset:0;background:#fff;pointer-events:none;z-index:5;opacity:0'; document.getElementById('wrap').appendChild(arenaFlashEl); }
+    arenaFlashEl.style.transition = 'none'; arenaFlashEl.style.opacity = '0.9';
+    requestAnimationFrame(() => { arenaFlashEl.style.transition = 'opacity .5s'; arenaFlashEl.style.opacity = '0'; });
+  }
   function updHearts() { $('hearts').innerHTML = Array.from({ length: 3 }, (_, i) => `<span class="${i < P.hearts ? '' : 'off'}"></span>`).join(''); }
   function bossHit(a) {
     if (!boss || !boss.alive) return;
-    const dmg = Math.round(14 * BOWS[a.bow.id].mul * 0.5); boss.hp -= dmg; boss.hurtT = 0.2; SFX.bossHit(); updBossHp();
-    popText(boss.x, boss.hitY + 1.2, boss.z, '-' + dmg, '#ff8a8a'); burst(boss.x, boss.hitY, boss.z, 0xffe066, 10, 3);
+    const dmg = Math.round(14 * BOWS[a.bow.id].mul * 0.5); boss.hp -= dmg; boss.hurtT = 0.2; boss.flashT = 0.12; SFX.bossHit(); updBossHp();
+    popText(boss.x, boss.hitY + 1.2, boss.z, '-' + dmg, '#ff8a8a'); burst(boss.x, boss.hitY, boss.z, 0xffe066, 12, 3.2);
     if (boss.hp <= 0) bossDefeated();
   }
   function bossDefeated() {
     boss.alive = false; const def = boss.def; earn(def.reward); S.bossesWon[def.id] = true; save(); updCash();
-    scene.remove(boss.mesh); burst(boss.x, boss.hitY, boss.z, 0xffe066, 60, 7); SFX.win();
+    scene.remove(boss.mesh); burst(boss.x, boss.hitY, boss.z, 0xffe066, 70, 8); burst(boss.x, boss.hitY + 0.6, boss.z, 0xffffff, 24, 5);
+    [0xFF4F8B, 0xFFC93C, 0x3DDC84, 0x4F9DFF, 0xC56BFF].forEach(c => burst(boss.x, boss.hitY + 1, boss.z, c, 16, 6));
+    bossBullets.forEach(bu => scene.remove(bu.mesh)); bossBullets = [];
+    SFX.win();
     $('rT').textContent = 'Zwycięstwo!'; $('rS').textContent = 'Pokonałeś: ' + def.name + '. Nagroda: ' + fmtM(def.reward) + '.'; $('result').classList.remove('hide');
     boss = null; bossMode = false; $('bossHpBox').style.display = 'none';
   }
   function bossFailed() {
-    $('rT').textContent = 'Porażka'; $('rS').textContent = boss ? ('Pokonał cię: ' + boss.def.name + '. Spróbuj ponownie, lepiej się uchylaj.') : '';
-    $('result').classList.remove('hide'); if (boss) scene.remove(boss.mesh); boss = null; bossMode = false; $('bossHpBox').style.display = 'none';
+    $('rT').textContent = 'Porażka'; $('rS').textContent = boss ? ('Pokonał cię: ' + boss.def.name + '. Spróbuj ponownie, lepiej się uchylaj przed szarżami i pociskami.') : '';
+    $('result').classList.remove('hide'); if (boss) scene.remove(boss.mesh); bossBullets.forEach(bu => scene.remove(bu.mesh)); bossBullets = []; boss = null; bossMode = false; $('bossHpBox').style.display = 'none';
   }
   function bossStep(dt, T) {
     if (!boss) return;
-    boss.hurtT = Math.max(0, boss.hurtT - dt);
-    const a = T * boss.def.speed * 0.3 + 10; boss.x = BOSS_ARENA.x + Math.cos(a) * 10; boss.z = BOSS_ARENA.z - 8 + Math.sin(a) * 6;
+    boss.hurtT = Math.max(0, boss.hurtT - dt); boss.flashT = Math.max(0, boss.flashT - dt);
+    boss.mesh.userData.bodyMat.emissive.setHex(boss.flashT > 0 ? 0xffffff : boss.def.color);
+    boss.mesh.userData.bodyMat.emissiveIntensity = boss.flashT > 0 ? 0.9 : 0.12;
+
+    if (boss.mode === 'lunge') {
+      boss.x += boss.lungeDirX * dt; boss.z += boss.lungeDirZ * dt; boss.lungeT -= dt;
+      const d = Math.hypot(P.x - boss.x, P.z - boss.z);
+      if (d < 1.6 + boss.def.bodyScale) { playerHurt(1.4); if (!boss) return; boss.mode = 'retreat'; boss.lungeT = 0.5; }
+      else if (boss.lungeT <= 0) { boss.mode = 'retreat'; boss.lungeT = 0.5; }
+    } else if (boss.mode === 'retreat') {
+      boss.x += -boss.lungeDirX * 0.5 * dt; boss.z += -boss.lungeDirZ * 0.5 * dt; boss.lungeT -= dt;
+      if (boss.lungeT <= 0) { boss.mode = 'circle'; boss.lungeT = rnd(5.5, 8); }
+    } else {
+      const a = T * boss.def.speed * 0.3 + 10; boss.x = BOSS_ARENA.x + Math.cos(a) * 10; boss.z = BOSS_ARENA.z - 8 + Math.sin(a) * 6;
+      boss.lungeT -= dt;
+      if (boss.lungeT <= 0) { const dx = P.x - boss.x, dz = P.z - boss.z, d = Math.hypot(dx, dz) || 1; boss.mode = 'lunge'; boss.lungeDirX = dx / d * boss.def.speed * 4.2; boss.lungeDirZ = dz / d * boss.def.speed * 4.2; boss.lungeT = 0.7; SFX.roar(); banner('Szarża!', '', 700); }
+    }
+    const cx = clamp(boss.x, BOSS_ARENA.x - BOSS_ARENA.r + 2, BOSS_ARENA.x + BOSS_ARENA.r - 2), cz = clamp(boss.z, BOSS_ARENA.z - BOSS_ARENA.r + 2, BOSS_ARENA.z + BOSS_ARENA.r - 2);
+    boss.x = cx; boss.z = cz;
     boss.mesh.position.set(boss.x, 0, boss.z); boss.mesh.rotation.y = Math.atan2(P.x - boss.x, P.z - boss.z);
-    boss.mesh.scale.setScalar(1 + (boss.hurtT > 0 ? Math.sin(boss.hurtT * 40) * 0.06 : 0));
-    boss.fireT -= dt;
-    if (boss.fireT <= 0) { boss.fireT = rnd(1.6, 2.6); fireBossBullet(); }
+    const hurtPulse = boss.hurtT > 0 ? Math.sin(boss.hurtT * 40) * 0.06 : 0, windPulse = boss.windup > 0 ? Math.sin(T * 24) * 0.1 * (boss.windup / 0.6) : 0;
+    boss.mesh.scale.setScalar(1 + hurtPulse + windPulse);
+    boss.mesh.userData.coreMat.color.setHex(boss.windup > 0 ? 0xff5050 : 0xffe066);
+    boss.mesh.userData.coreGlow.material.color.setHex(boss.windup > 0 ? 0xff5050 : 0xffe066);
+    boss.mesh.userData.coreGlow.material.opacity = 0.3 + (boss.windup > 0 ? (0.6 - boss.windup) / 0.6 * 0.5 : 0);
+
+    if (boss.mode === 'circle') {
+      boss.fireT -= dt;
+      if (boss.fireT <= 0.6 && boss.windup <= 0) { boss.windup = 0.6; SFX.whoosh(); }
+      if (boss.windup > 0) { boss.windup -= dt; if (boss.windup <= 0) { fireBossBullet(); boss.fireT = rnd(2.4, 3.4); } }
+    }
     for (let i = bossBullets.length - 1; i >= 0; i--) {
       const b = bossBullets[i]; b.life -= dt; b.pos.addScaledVector(b.vel, dt); b.mesh.position.copy(b.pos);
       const d = Math.hypot(b.pos.x - P.x, b.pos.z - P.z);
-      if (d < 0.9 && Math.abs(b.pos.y - 1) < 1.1) { playerHurt(); scene.remove(b.mesh); bossBullets.splice(i, 1); continue; }
+      if (d < 0.9 && Math.abs(b.pos.y - 1) < 1.1) { playerHurt(1); scene.remove(b.mesh); bossBullets.splice(i, 1); if (!boss) return; continue; }
       if (b.life <= 0) { scene.remove(b.mesh); bossBullets.splice(i, 1); }
     }
   }
   function fireBossBullet() {
     const dir = new THREE.Vector3(P.x - boss.x, 0, P.z - boss.z).normalize();
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff3b3b })); mesh.position.set(boss.x, boss.hitY, boss.z); scene.add(mesh);
-    bossBullets.push({ mesh, pos: mesh.position.clone(), vel: dir.multiplyScalar(7), life: 5 }); SFX.whoosh();
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.3, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff3b3b }));
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff8a5a, transparent: true, opacity: 0.4 })); mesh.add(glow);
+    mesh.position.set(boss.x, boss.hitY, boss.z); scene.add(mesh);
+    bossBullets.push({ mesh, pos: mesh.position.clone(), vel: dir.multiplyScalar(7.5), life: 5 }); SFX.release(1);
   }
-  function playerHurt() {
-    if (P.hurtT > 0) return; P.hearts--; P.hurtT = 0.8; updHearts(); SFX.hurt();
-    if (navigator.vibrate) { try { navigator.vibrate(90); } catch (e) {} }
+  function playerHurt(mul) {
+    if (P.hurtT > 0) return; P.hearts--; P.hurtT = 0.9; hurtFlashT = 0.35; updHearts(); SFX.hurt();
+    if (navigator.vibrate) { try { navigator.vibrate(mul > 1 ? 160 : 90); } catch (e) {} }
     if (P.hearts <= 0) bossFailed();
   }
 
@@ -626,7 +679,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   function updBowPill() { $('bowPill').textContent = 'Łuk: ' + BOWS[S.equipped].name; }
 
   // ================= STEP / CAMERA =================
-  let state = 'menu', paused = false, teleportZ = null;
+  let state = 'menu', paused = false, teleportZ = null, hurtFlashT = 0;
   function step(dt, T) {
     let f = 0, s2 = 0;
     if (keys.KeyW || keys.ArrowUp) f++; if (keys.KeyS || keys.ArrowDown) f--; if (keys.KeyD || keys.ArrowRight) s2++; if (keys.KeyA || keys.ArrowLeft) s2--;
@@ -642,6 +695,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     P.zone = bossMode ? 'boss' : (inBunker(P.x, P.z) ? 'bunker' : 'range');
     const targetCamT = P.zone === 'bunker' ? 0 : 1; P.camT += (targetCamT - P.camT) * clamp(dt * 3.2, 0, 1);
     P.hurtT = Math.max(0, P.hurtT - dt);
+    hurtFlashT = Math.max(0, hurtFlashT - dt * 2.4); $('hurtFlash').style.opacity = hurtFlashT > 0 ? Math.min(1, hurtFlashT * 2) : 0;
     if (drawing) { drawT += dt; const bow = BOWS[S.equipped]; $('powerI').style.width = Math.min(100, drawT / bow.draw * 100) + '%'; if (fpArrowNock) fpArrowNock.visible = true; }
     updateTargets(dt, T); arrowStep(dt); if (bossMode) bossStep(dt, T);
     for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.life -= dt; p.vy -= 10 * dt; p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.material.opacity = Math.max(0, p.life * 2); p.m.material.transparent = true; if (p.life <= 0) { scene.remove(p.m); parts.splice(i, 1); } }
