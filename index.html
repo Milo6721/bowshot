@@ -19,9 +19,14 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 #wrap{position:relative;width:100%;height:100%}
 canvas#c{display:block;width:100%;height:100%;touch-action:none}
 .hud{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}
-.pill{background:var(--glass);border-radius:14px;padding:7px 14px;font-weight:800;font-size:15px;box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.pill{background:var(--glass);border-radius:14px;padding:7px 14px;font-weight:800;font-size:15px;box-shadow:0 3px 0 rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.16);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.pill.res{display:flex;gap:10px;font-size:14px;font-variant-numeric:tabular-nums}
+.reslist{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:-4px 0 12px}
+.reslist span{background:#F3F5FA;border:2px solid #16213A;border-radius:12px;padding:4px 10px;font-weight:800;font-size:14px}
+.cost{display:inline-block;margin-right:6px;font-weight:800}
+.cost.no{color:#d6336c}.cost.ok{color:#1f9e5a}
 .cash b{color:#7CFFB2;font-variant-numeric:tabular-nums}
-.ibtn{pointer-events:auto;background:var(--glass);border:0;color:#fff;border-radius:12px;min-width:40px;height:38px;padding:0 10px;font:800 14px "Nunito";cursor:pointer}
+.ibtn{pointer-events:auto;background:var(--glass);border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:12px;min-width:40px;height:38px;padding:0 10px;font:800 14px "Nunito";cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.28);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 .hearts{display:flex;gap:4px;background:var(--glass);padding:6px 9px;border-radius:12px}
 .hearts span{width:15px;height:15px;clip-path:polygon(50% 100%,0 38%,12% 8%,35% 4%,50% 22%,65% 4%,88% 8%,100% 38%);background:var(--pink)}
 .hearts span.off{background:rgba(255,255,255,.22)}
@@ -85,7 +90,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   <div class="power" id="power"><i id="powerI"></i></div>
   <div class="interact" id="interact"></div>
   <div class="hud">
-    <div class="pill cash">💰 <b id="cashT">$0</b></div>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start"><div class="pill cash">💰 <b id="cashT">$0</b></div><div class="pill res" id="resPill"></div></div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
       <div style="display:flex;gap:6px"><button class="ibtn" id="aimBtn" title="Linia lotu strzały">🎯</button><button class="ibtn" id="soundBtn">🔊</button><button class="ibtn" id="pauseBtn">II</button></div>
       <div class="pill" id="bowPill">Łuk: Zwykły</div>
@@ -103,7 +108,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 
   <div class="overlay" id="menu"><div class="card">
     <h1>Bow<span>Shot</span></h1>
-    <p>Wyjdź z betonowego bunkra na strzelnicę, trafiaj w tarcze i zbieraj kasę. Kup wszystkie łuki, żeby odblokować bossa.</p>
+    <p>Przechodź poziomy na strzelnicy przed bunkrem, ścinaj drzewa i kop w lesie za bunkrem, kupuj i craftuj łuki. Kup 5 łuków ze sklepu, żeby odblokować bossa.</p>
     <div class="btns"><button class="play" id="startBtn">Graj</button><button class="play alt" id="newBtn" style="display:none">Nowa gra (kasuje postęp)</button></div>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:14px"><input id="codeIn" inputmode="numeric" maxlength="8" placeholder="kod" aria-label="Kod" style="width:110px;font:400 20px 'Lilita One',sans-serif;text-align:center;border:3px solid #16213A;border-radius:12px;padding:6px;color:#16213A;letter-spacing:4px"><button class="play alt" id="codeBtn" style="min-width:0;padding:6px 16px;font-size:18px">OK</button></div>
     <p id="codeMsg" style="font-size:13px;margin:6px 0 0;min-height:18px"></p>
@@ -118,6 +123,13 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     <p>Kupuj po kolei. Lepszy łuk szybciej się naciąga, mocniej strzela i daje więcej kasy za trafienie.</p>
     <div class="bowlist" id="bowlist"></div>
     <button class="play alt" id="shopClose">Zamknij (E)</button>
+  </div></div>
+  <div class="overlay hide" id="craft"><div class="card">
+    <h2>Warsztat</h2>
+    <p>Zbieraj surowce w lesie za bunkrem (tylne drzwi): ścinaj drzewa, rozbijaj kamienie, rudę żelaza i kryształy. Łuki tworzy się po kolei.</p>
+    <div class="reslist" id="craftRes"></div>
+    <div class="bowlist" id="craftlist"></div>
+    <button class="play alt" id="craftClose">Zamknij (E)</button>
   </div></div>
   <div class="overlay hide" id="board"><div class="card">
     <h2>Poziomy</h2>
@@ -171,6 +183,9 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     coin: () => { tone(1568, 0.05, 'square', 0.02); setTimeout(() => tone(2093, 0.07, 'square', 0.018), 35); },
     buy: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.12, 'square', 0.05), i * 70)),
     no: () => tone(180, 0.2, 'sawtooth', 0.04, -60), click: () => tone(660, 0.05, 'square', 0.03),
+    swing: () => tone(520, 0.08, 'sine', 0.025, -380), chop: () => { noise(0.09, 420, 0.16, 0.9); tone(140, 0.08, 'triangle', 0.05, -40); },
+    mine: () => { tone(1300, 0.06, 'square', 0.03, -400); noise(0.07, 2600, 0.08, 1.2); }, fall: () => { noise(0.45, 180, 0.18, 0.5); tone(90, 0.4, 'sine', 0.06, -40); },
+    crumble: () => noise(0.3, 700, 0.14, 0.6), craft: () => [392, 523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.12, 'triangle', 0.05), i * 70)),
     hurt: () => tone(220, 0.3, 'sawtooth', 0.06, -100), bossHit: () => noise(0.14, 220, 0.14, 0.4),
     roar: () => { tone(80, 0.6, 'sawtooth', 0.07, -20); tone(60, 0.7, 'sine', 0.05, -10); },
     ko: () => [523, 392, 262].forEach((f, i) => setTimeout(() => tone(f, 0.3, 'sawtooth', 0.05, -40), i * 160)),
@@ -228,39 +243,51 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   const STD = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.75 }, o));
   function box(parent, w, h, d, m, x, y, z, cast = true) { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = cast; b.receiveShadow = true; parent.add(b); return b; }
   const solids = [];
-  function addSolid(x, z, hw, hd, tag) { solids.push({ x0: x - hw, x1: x + hw, z0: z - hd, z1: z + hd, tag }); }
+  function addSolid(x, z, hw, hd, tag, h) { const o = { x0: x - hw, x1: x + hw, z0: z - hd, z1: z + hd, tag, h: h || 3 }; solids.push(o); return o; }
 
   // ---- trees for scenery ----
   const trunkM = STD(0x8a5a3c), leafMs = [0x3fae5a, 0x2f9e55, 0x58c46a].map(c => STD(c, { flatShading: true }));
   function tree(x, z, s = 1) { const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
     box(g, 0.7 * s, 3 * s, 0.7 * s, trunkM, 0, 1.5 * s, 0); const l = leafMs[Math.floor(Math.random() * 3)];
     box(g, 2.6 * s, 2 * s, 2.6 * s, l, 0, 3.6 * s, 0); box(g, 1.8 * s, 1.4 * s, 1.8 * s, l, 0, 4.9 * s, 0); addSolid(x, z, 0.6 * s, 0.6 * s, 'tree'); }
-  for (let i = 0; i < 46; i++) { const x = rnd(-80, 80), z = rnd(-130, 30); if (Math.abs(x) < RANGE_W / 2 + 4 && z > -RANGE_LEN - 12 && z < 12) continue; if (Math.hypot(x, z) < 14) continue; tree(x, z, rnd(0.8, 1.3)); }
+  for (let i = 0; i < 70; i++) { const x = rnd(-95, 95), z = rnd(-135, 100); if (Math.abs(x) < RANGE_W / 2 + 4 && z > -RANGE_LEN - 12 && z < 18) continue; if (Math.abs(x) < 50 && z > 12 && z < 82) continue; if (Math.abs(x) < 16 && z > -6 && z < 20) continue; tree(x, z, rnd(0.8, 1.3)); }
 
   // ================= BUNKER (SPAWN) =================
-  const BUNK = { x: 0, z: 6, hw: 7, hd: 6 };
+  const BUNK = { x: 0, z: 7, hw: 11, hd: 9 }, WALL_H = 6, DOOR_HW = 2.4;
   (function buildBunker() {
     const g = new THREE.Group(); g.position.set(BUNK.x, 0, BUNK.z); scene.add(g);
-    const wallM = STD(0xBFC4CE, { map: concreteTex }), floorM = STD(0x9aa0aa, { map: concreteTex });
-    box(g, BUNK.hw * 2 + 1, 0.3, BUNK.hd * 2 + 1, floorM, 0, 0.15, 0);
-    const wt = 0.6, h = 4.4;
-    box(g, BUNK.hw * 2 + wt * 2, h, wt, wallM, 0, h / 2, BUNK.hd + wt / 2); // back wall
-    box(g, wt, h, BUNK.hd * 2, wallM, -BUNK.hw - wt / 2, h / 2, 0); // left
-    box(g, wt, h, BUNK.hd * 2, wallM, BUNK.hw + wt / 2, h / 2, 0); // right
-    box(g, BUNK.hw * 2 + wt * 2, 0.5, wt, STD(0x8f94a0), 0, h + 0.25, BUNK.hd + wt / 2); // top lintel back
-    box(g, wt, 0.5, BUNK.hd * 2 + wt * 2, STD(0x8f94a0), -BUNK.hw - wt / 2, h + 0.25, 0);
-    box(g, wt, 0.5, BUNK.hd * 2 + wt * 2, STD(0x8f94a0), BUNK.hw + wt / 2, h + 0.25, 0);
-    const sign = textSprite('BOW SHOT', '#ffffff', 56, '#16213A'); sign.position.set(0, h + 1.6, BUNK.hd - 0.3); sign.scale.multiplyScalar(1.3); g.add(sign);
-    [[-BUNK.hw - 0.3, 2.2, 2], [BUNK.hw + 0.3, 2.2, 2]].forEach(([x, y, z]) => { const lm = STD(0xfff3c4, { emissive: 0xffd36b, emissiveIntensity: 0.6 }); box(g, 0.4, 0.6, 0.4, lm, x, y, z, false); });
-    addSolid(BUNK.x, BUNK.z + BUNK.hd + wt / 2, BUNK.hw + wt, wt, 'wall');
-    addSolid(BUNK.x - BUNK.hw - wt / 2, BUNK.z, wt, BUNK.hd, 'wall');
-    addSolid(BUNK.x + BUNK.hw + wt / 2, BUNK.z, wt, BUNK.hd, 'wall');
+    const wallM = STD(0xC4C9D3, { map: concreteTex }), floorM = STD(0x9aa0aa, { map: concreteTex }), trimM = STD(0x7e8592), stripe = STD(0xFFC93C);
+    box(g, BUNK.hw * 2 + 1.2, 0.3, BUNK.hd * 2 + 1.2, floorM, 0, 0.15, 0);
+    for (let i = -3; i <= 3; i++) box(g, 0.08, 0.02, BUNK.hd * 2, STD(0x8a909a), i * 3, 0.31, 0, false);
+    const wt = 0.6, h = WALL_H, segW = BUNK.hw - DOOR_HW;
+    // back wall split by the forest door
+    [-1, 1].forEach(sd => box(g, segW + wt, h, wt, wallM, sd * (DOOR_HW + (segW + wt) / 2), h / 2, BUNK.hd + wt / 2));
+    box(g, DOOR_HW * 2, h - 3.6, wt, wallM, 0, 3.6 + (h - 3.6) / 2, BUNK.hd + wt / 2);
+    box(g, DOOR_HW * 2 + 0.4, 0.25, wt + 0.2, stripe, 0, 3.6, BUNK.hd + wt / 2);
+    box(g, wt, h, BUNK.hd * 2, wallM, -BUNK.hw - wt / 2, h / 2, 0);
+    box(g, wt, h, BUNK.hd * 2, wallM, BUNK.hw + wt / 2, h / 2, 0);
+    // roof over the back half + front lintel beam
+    box(g, BUNK.hw * 2 + wt * 2, 0.5, BUNK.hd + wt, trimM, 0, h + 0.25, BUNK.hd / 2);
+    box(g, BUNK.hw * 2 + wt * 2, 0.6, 0.6, trimM, 0, h - 0.3, -BUNK.hd + 0.3);
+    box(g, BUNK.hw * 2 + wt * 2, 0.18, 0.62, stripe, 0, h - 0.7, -BUNK.hd + 0.3);
+    [-BUNK.hw - wt / 2, BUNK.hw + wt / 2].forEach(x => box(g, wt + 0.1, 0.18, BUNK.hd * 2, stripe, x, 1.2, 0));
+    const sign = textSprite('BOW SHOT', '#ffffff', 64, '#16213A'); sign.position.set(0, h + 1.5, -BUNK.hd + 0.3); sign.scale.multiplyScalar(1.8); g.add(sign);
+    const lamp = STD(0xfff3c4, { emissive: 0xffd36b, emissiveIntensity: 0.9 });
+    [[-6, 4], [6, 4], [-6, -3], [6, -3]].forEach(([x, z]) => box(g, 1.4, 0.15, 0.5, lamp, x, h - 0.05, z, false));
+    const pl1 = new THREE.PointLight(0xffe2a8, 0.6, 22); pl1.position.set(-5, 4.8, 3); g.add(pl1);
+    const pl2 = new THREE.PointLight(0xffe2a8, 0.6, 22); pl2.position.set(5, 4.8, 3); g.add(pl2);
+    const out = textSprite('LAS 🌲', '#ffffff', 52, '#2f9e55'); out.position.set(0, 4.6, BUNK.hd + 0.9); out.scale.multiplyScalar(1.1); g.add(out);
+    const inn = textSprite('Las ➜', '#ffffff', 44, '#2f9e55'); inn.position.set(0, 4.4, BUNK.hd - 0.1); inn.scale.multiplyScalar(0.9); g.add(inn);
+    [-1, 1].forEach(sd => addSolid(BUNK.x + sd * (DOOR_HW + (segW + wt) / 2), BUNK.z + BUNK.hd + wt / 2, (segW + wt) / 2, wt / 2, 'wall', h));
+    addSolid(BUNK.x - BUNK.hw - wt / 2, BUNK.z, wt / 2, BUNK.hd, 'wall', h);
+    addSolid(BUNK.x + BUNK.hw + wt / 2, BUNK.z, wt / 2, BUNK.hd, 'wall', h);
   })();
+  function underRoof(x, z) { return Math.abs(x - BUNK.x) < BUNK.hw + 0.6 && z > BUNK.z - 0.3 && z < BUNK.z + BUNK.hd + 0.6; }
 
   // ---- shop kiosk inside bunker ----
-  const SHOP = { x: -4.3, z: 8.5 };
+  const SHOP = { x: -8.3, z: 11 };
   (function buildShop() {
-    const g = new THREE.Group(); g.position.set(SHOP.x, 0, SHOP.z); g.rotation.y = 0.5; scene.add(g);
+    const g = new THREE.Group(); g.position.set(SHOP.x, 0, SHOP.z); g.rotation.y = 2.2; scene.add(g);
     const wm = STD(0x9b6a3c, { map: woodTex });
     box(g, 2.6, 1.1, 1.2, wm, 0, 0.55, 0); box(g, 2.8, 0.15, 1.4, STD(0x6b4a2e), 0, 1.15, 0);
     [-1.1, 1.1].forEach(x => box(g, 0.15, 1.8, 0.15, wm, x, 1.6, -0.4));
@@ -270,8 +297,22 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     addSolid(SHOP.x, SHOP.z, 1.6, 1, 'shop');
   })();
 
+  // ---- crafting workbench ----
+  const BENCH = { x: -8.3, z: 2 };
+  (function buildBench() {
+    const g = new THREE.Group(); g.position.set(BENCH.x, 0, BENCH.z); g.rotation.y = 1.57; scene.add(g);
+    const wm = STD(0x9b6a3c, { map: woodTex }), dark = STD(0x5a3c1e), metal = STD(0x8a8f99, { metalness: 0.5, roughness: 0.4 });
+    box(g, 3, 0.25, 1.4, wm, 0, 1.05, 0); [[-1.3, -0.55], [1.3, -0.55], [-1.3, 0.55], [1.3, 0.55]].forEach(([x, z]) => box(g, 0.18, 1, 0.18, dark, x, 0.5, z));
+    box(g, 0.7, 0.35, 0.5, metal, -0.8, 1.35, 0); box(g, 0.25, 0.5, 0.25, metal, -0.8, 1.6, 0);
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8, 6), dark); handle.rotation.z = 1.4; handle.position.set(0.5, 1.22, 0.2); g.add(handle);
+    box(g, 0.28, 0.22, 0.08, metal, 0.88, 1.27, 0.2);
+    for (let i = 0; i < 3; i++) box(g, 0.9, 0.12, 0.12, STD(0xb98a5a), 0.6, 1.24 + i * 0.13, -0.4);
+    const sign = textSprite('WARSZTAT', '#ffffff', 44, '#e07a1f'); sign.position.set(0, 2.3, 0); sign.scale.multiplyScalar(0.9); g.add(sign);
+    addSolid(BENCH.x, BENCH.z, 0.8, 1.6, 'bench', 1.4);
+  })();
+
   // ---- level board on the back wall ----
-  const BOARD = { x: 0, z: 10.9 };
+  const BOARD = { x: 6, z: 15.1 };
   (function buildBoard() {
     const g = new THREE.Group(); g.position.set(BOARD.x, 0, BOARD.z); scene.add(g);
     box(g, 3.6, 2.2, 0.25, STD(0x2b3a5c), 0, 1.9, 0.62); box(g, 3.9, 0.18, 0.4, STD(0x6b4a2e), 0, 0.8, 0.6);
@@ -281,15 +322,15 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   })();
 
   // ---- boss portal inside bunker ----
-  const PORTAL = { x: 4.3, z: 8.5 };
+  const PORTAL = { x: 8.3, z: 9 };
   let portalRing, portalGlow, portal_group, portal_lock;
   (function buildPortal() {
-    const g = new THREE.Group(); g.position.set(PORTAL.x, 0, PORTAL.z); g.rotation.y = -0.5; scene.add(g);
+    const g = new THREE.Group(); g.position.set(PORTAL.x, 0, PORTAL.z); g.rotation.y = -1.6; scene.add(g);
     const fm = STD(0x3a3a44, { metalness: 0.4, roughness: 0.5 });
     box(g, 2.4, 3, 0.4, fm, 0, 1.5, -0.3); box(g, 2.6, 0.3, 0.5, fm, 0, 3.05, -0.3);
-    portalGlow = new THREE.Mesh(new THREE.CircleGeometry(1, 20), new THREE.MeshBasicMaterial({ color: 0x9b3bff, transparent: true, opacity: 0.35 }));
+    portalGlow = new THREE.Mesh(new THREE.CircleGeometry(1, 20), new THREE.MeshBasicMaterial({ color: 0x9b3bff, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
     portalGlow.position.set(0, 1.5, -0.05); g.add(portalGlow);
-    portalRing = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.1, 24), new THREE.MeshBasicMaterial({ color: 0xc56bff }));
+    portalRing = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.1, 24), new THREE.MeshBasicMaterial({ color: 0xc56bff, side: THREE.DoubleSide }));
     portalRing.position.set(0, 1.5, 0); g.add(portalRing);
     const sign = textSprite('BOSS', '#ffffff', 44, '#9b3bff'); sign.position.set(0, 3.5, -0.3); sign.scale.multiplyScalar(0.9); g.add(sign);
     const lock = textSprite('🔒', '#fff', 60); lock.position.set(0, 1.5, 0.1); lock.name = 'lock'; g.add(lock);
@@ -379,6 +420,119 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     for (let i = 0; i < 8; i++) { const z = -10 - i * (RANGE_LEN - 14) / 7; [-1, 1].forEach(side => { const m = new THREE.Mesh(new THREE.ConeGeometry(0.5, 2.2, 8), STD(0xFF9A3C)); m.position.set(side * (RANGE_W / 2 - 0.6), 1.1, z); m.castShadow = true; scene.add(m); }); }
   })();
 
+  // ================= FOREST (choppable trees, minable rocks) =================
+  const FOREST = { x0: -44, x1: 44, z0: BUNK.z + BUNK.hd + 0.6, z1: 76 };
+  (function buildFence() {
+    const post = STD(0x7a5a3c), rail = STD(0x9b6a3c), H = 1.3, zF = FOREST.z0 + 0.3;
+    function fenceLine(x0, z0, x1, z1) {
+      const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 3));
+      for (let i = 0; i <= n; i++) { const t = i / n; box(scene, 0.22, H, 0.22, post, x0 + (x1 - x0) * t, H / 2, z0 + (z1 - z0) * t); }
+      const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, ang = Math.atan2(x1 - x0, z1 - z0);
+      [0.45, 0.95].forEach(y => { const m = box(scene, 0.1, 0.12, len, rail, cx, y, cz); m.rotation.y = ang; });
+      addSolid(cx, cz, Math.abs(x1 - x0) / 2 + 0.15, Math.abs(z1 - z0) / 2 + 0.15, 'fence', H);
+    }
+    fenceLine(FOREST.x0 - 0.6, zF, -BUNK.hw - 0.6, zF); fenceLine(BUNK.hw + 0.6, zF, FOREST.x1 + 0.6, zF);
+    fenceLine(FOREST.x0 - 0.6, zF, FOREST.x0 - 0.6, FOREST.z1 + 0.6); fenceLine(FOREST.x1 + 0.6, zF, FOREST.x1 + 0.6, FOREST.z1 + 0.6);
+    fenceLine(FOREST.x0 - 0.6, FOREST.z1 + 0.6, FOREST.x1 + 0.6, FOREST.z1 + 0.6);
+  })();
+  const NODES = [];
+  const RES_ICON = { wood: '🪵', stone: '🪨', iron: '⛓️', crystal: '💎' }, RES_NAME = { wood: 'drewno', stone: 'kamień', iron: 'żelazo', crystal: 'kryształ' };
+  const nodeMats = {
+    trunk: STD(0x8a5a3c), oak: [0x3fae5a, 0x2f9e55, 0x58c46a].map(c => STD(c, { flatShading: true })), pine: STD(0x2a7d4a, { flatShading: true }),
+    stone: STD(0x9aa0aa, { flatShading: true, roughness: 0.9 }), iron: STD(0x6f737b, { flatShading: true, roughness: 0.8 }), ironOre: STD(0xd27a3a, { roughness: 0.5, metalness: 0.3 }),
+    crystal: STD(0xb070ff, { emissive: 0x7a2cff, emissiveIntensity: 0.55, roughness: 0.2, transparent: true, opacity: 0.9 }), stump: STD(0x9b6a3c, { map: woodTex }), rubble: STD(0x8a8f99, { flatShading: true })
+  };
+  const NODE_DEF = {
+    oak: { hp: 5, yield: { wood: 4 }, respawn: 35, r: 0.7, h: 7, label: 'Drzewo' },
+    pine: { hp: 4, yield: { wood: 3 }, respawn: 30, r: 0.6, h: 7, label: 'Sosna' },
+    stone: { hp: 5, yield: { stone: 3 }, respawn: 40, r: 0.95, h: 1.6, label: 'Kamień' },
+    iron: { hp: 7, yield: { iron: 2, stone: 1 }, respawn: 60, r: 1.0, h: 1.7, label: 'Ruda żelaza' },
+    crystal: { hp: 8, yield: { crystal: 2 }, respawn: 75, r: 0.9, h: 2.2, label: 'Kryształy' }
+  };
+  const isTreeKind = k => k === 'oak' || k === 'pine';
+  function addNode(kind, x, z, s, rng) {
+    const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+    const top = new THREE.Group(); g.add(top);
+    if (kind === 'oak') { box(top, 0.75 * s, 3.2 * s, 0.75 * s, nodeMats.trunk, 0, 1.6 * s, 0); const l = nodeMats.oak[Math.floor(rng() * 3)]; box(top, 3 * s, 2.2 * s, 3 * s, l, 0, 3.9 * s, 0); box(top, 2 * s, 1.5 * s, 2 * s, l, 0.2 * s, 5.3 * s, -0.1 * s); }
+    else if (kind === 'pine') { box(top, 0.6 * s, 2.4 * s, 0.6 * s, nodeMats.trunk, 0, 1.2 * s, 0); [[2.2, 2.6], [1.7, 3.8], [1.1, 4.9]].forEach(([r, y]) => { const c = new THREE.Mesh(new THREE.ConeGeometry(r * s, 1.9 * s, 7), nodeMats.pine); c.position.y = y * s; c.castShadow = true; top.add(c); }); }
+    else if (kind === 'stone' || kind === 'iron') {
+      const m = new THREE.Mesh(new THREE.DodecahedronGeometry(1.0 * s, 0), kind === 'iron' ? nodeMats.iron : nodeMats.stone); m.position.y = 0.6 * s; m.scale.set(1.1, 0.75, 1); m.rotation.y = rng() * 6; m.castShadow = true; m.receiveShadow = true; top.add(m);
+      if (kind === 'iron') for (let i = 0; i < 7; i++) { const a = rng() * 6.28, yy = 0.35 + rng() * 0.6; box(top, 0.24, 0.24, 0.24, nodeMats.ironOre, Math.cos(a) * 0.85 * s, yy * s, Math.sin(a) * 0.85 * s, false); }
+    } else if (kind === 'crystal') {
+      box(top, 1.6 * s, 0.5 * s, 1.4 * s, nodeMats.rubble, 0, 0.25 * s, 0);
+      for (let i = 0; i < 5; i++) { const c = new THREE.Mesh(new THREE.OctahedronGeometry(0.45 * s, 0), nodeMats.crystal); c.position.set((rng() - 0.5) * 1.1 * s, (0.9 + rng() * 0.7) * s, (rng() - 0.5) * 0.9 * s); c.scale.y = 1.8 + rng(); c.rotation.set(rng() * 0.4, rng() * 6, rng() * 0.4); top.add(c); }
+    }
+    const stub = new THREE.Group(); g.add(stub); stub.visible = false;
+    if (isTreeKind(kind)) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.42 * s, 0.5 * s, 0.5, 8), nodeMats.stump); st.position.y = 0.25; st.castShadow = true; stub.add(st); }
+    else for (let i = 0; i < 4; i++) box(stub, 0.3, 0.2, 0.3, nodeMats.rubble, (rng() - 0.5) * 1.2, 0.1, (rng() - 0.5) * 1.2, false);
+    const def = NODE_DEF[kind];
+    const n = { kind, x, z, s, g, top, stub, def, hp: def.hp, alive: true, respawnT: 0, shakeT: 0, fallT: -1, fallDir: 1, regrowT: 1, solid: addSolid(x, z, def.r * s, def.r * s, isTreeKind(kind) ? 'ftree' : 'rock', def.h) };
+    NODES.push(n); return n;
+  }
+  (function populateForest() {
+    const rng = mulberry(777), placed = [];
+    const free = (x, z, d) => { if (Math.abs(x) < 4.5 && z < FOREST.z0 + 14) return false; for (const p of placed) if (Math.hypot(p[0] - x, p[1] - z) < d) return false; return true; };
+    function place(kind, count, zMin, zMax, sMin, sMax) {
+      let tries = 0, c = 0;
+      while (c < count && tries < 800) { tries++; const x = FOREST.x0 + 2.5 + rng() * (FOREST.x1 - FOREST.x0 - 5), z = zMin + rng() * (zMax - zMin); if (!free(x, z, 4.8)) continue; placed.push([x, z]); addNode(kind, x, z, sMin + rng() * (sMax - sMin), rng); c++; }
+    }
+    place('crystal', 3, 60, FOREST.z1 - 3, 0.95, 1.1);
+    place('iron', 5, 40, FOREST.z1 - 3, 0.9, 1.1);
+    place('stone', 10, FOREST.z0 + 6, FOREST.z1 - 3, 0.8, 1.2);
+    place('oak', 18, FOREST.z0 + 5, FOREST.z1 - 2, 0.85, 1.2);
+    place('pine', 16, FOREST.z0 + 5, FOREST.z1 - 2, 0.85, 1.25);
+    const bushM = STD(0x46b25a, { flatShading: true }), flowerMs = [0xff6fa8, 0xffd84a, 0xffffff, 0x9b8cff].map(c => STD(c));
+    for (let i = 0; i < 30; i++) { const x = FOREST.x0 + 2 + rng() * (FOREST.x1 - FOREST.x0 - 4), z = FOREST.z0 + 3 + rng() * (FOREST.z1 - FOREST.z0 - 6); if (!free(x, z, 2.4)) continue; const b = new THREE.Mesh(new THREE.SphereGeometry(0.6 + rng() * 0.4, 7, 5), bushM); b.position.set(x, 0.4, z); b.scale.y = 0.75; b.castShadow = true; scene.add(b); }
+    for (let i = 0; i < 80; i++) box(scene, 0.14, 0.14, 0.14, flowerMs[i % 4], FOREST.x0 + 1 + rng() * (FOREST.x1 - FOREST.x0 - 2), 0.12, FOREST.z0 + 1 + rng() * (FOREST.z1 - FOREST.z0 - 2), false);
+    const pathM = STD(0xb8a27e, { roughness: 1 });
+    for (let i = 0; i < 9; i++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.75, 0.1, 8), pathM); st.position.set((rng() - 0.5) * 0.8, 0.05, FOREST.z0 + 1 + i * 1.6); st.receiveShadow = true; scene.add(st); }
+  })();
+  function nodeStep(dt) {
+    for (const n of NODES) {
+      if (n.shakeT > 0) { n.shakeT -= dt; if (n.fallT < 0) n.top.rotation.z = Math.sin(n.shakeT * 60) * 0.06 * Math.max(0, n.shakeT / 0.25); }
+      if (n.fallT >= 0) {
+        n.fallT += dt; const k = Math.min(1, n.fallT / 0.9);
+        if (isTreeKind(n.kind)) n.top.rotation.z = n.fallDir * k * k * 1.5; else n.top.scale.setScalar(Math.max(0.01, 1 - k));
+        if (n.fallT > 1.25) { n.top.visible = false; n.fallT = -1; if (isTreeKind(n.kind)) burst(n.x + n.fallDir * -2.5, 0.6, n.z, 0x3fae5a, 14, 3); }
+      }
+      if (!n.alive && n.fallT < 0) {
+        n.respawnT -= dt;
+        if (n.respawnT <= 0 && Math.hypot(P.x - n.x, P.z - n.z) > n.def.r * n.s + 1.6) { n.alive = true; n.hp = n.def.hp; n.top.visible = true; n.top.rotation.set(0, 0, 0); n.top.scale.setScalar(0.05); n.regrowT = 0; n.stub.visible = false; solids.push(n.solid); }
+      }
+      if (n.regrowT < 1) { n.regrowT = Math.min(1, n.regrowT + dt * 1.5); n.top.scale.setScalar(Math.max(0.05, n.regrowT)); }
+    }
+  }
+  function findNode() {
+    const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let best = null, bd = 1e9;
+    for (const n of NODES) {
+      if (!n.alive) continue;
+      const dx = n.x - P.x, dz = n.z - P.z, cd = Math.hypot(dx, dz), d = cd - n.def.r * n.s;
+      if (d > 1.7) continue;
+      if (d > 0.7 && (dx * fx + dz * fz) / (cd || 1) < 0.2) continue;
+      if (d < bd) { bd = d; best = n; }
+    }
+    return best;
+  }
+  function hitNode(n) {
+    n.hp--; n.shakeT = 0.25; const tree = isTreeKind(n.kind);
+    tree ? SFX.chop() : SFX.mine();
+    burst(n.x, tree ? 1.4 : 0.9, n.z, tree ? 0xb98a5a : (n.kind === 'crystal' ? 0xc58cff : n.kind === 'iron' ? 0xd27a3a : 0xaab0ba), 9, 3);
+    if (n.hp > 0) return;
+    n.alive = false; n.respawnT = n.def.respawn; const si = solids.indexOf(n.solid); if (si >= 0) solids.splice(si, 1);
+    n.fallT = 0; n.fallDir = P.x < n.x ? -1 : 1; n.stub.visible = true; tree ? SFX.fall() : SFX.crumble();
+    const y = n.def.yield, txt = [];
+    for (const k in y) { S.res[k] = (S.res[k] || 0) + y[k]; txt.push('+' + y[k] + ' ' + RES_ICON[k]); }
+    save(); updRes(); popText(n.x, 2.6, n.z, txt.join('  '), '#ffe066');
+  }
+  // tool swing (axe / pickaxe) used in the forest
+  let swingT = 0, swingCd = 0, swingHeld = false, swingHitDone = true;
+  function doSwing() { if (swingCd > 0) return; swingT = 0.34; swingCd = 0.42; swingHitDone = false; SFX.swing(); }
+  function swingStep(dt) {
+    swingCd = Math.max(0, swingCd - dt);
+    if (swingT > 0) { swingT -= dt; if (!swingHitDone && swingT < 0.17) { swingHitDone = true; const n = findNode(); if (n) hitNode(n); } }
+    if (swingHeld && P.zone === 'forest' && swingCd <= 0 && !paused) doSwing();
+  }
+
   // ================= PARTICLES / FLOATS =================
   const parts = [], floats = [];
   const pGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
@@ -416,13 +570,21 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     { id: 2, name: 'Wzmocniony Łuk', price: 500, draw: 1.0, speed: 55, mul: 1.6, c1: 0x8a8f99, c2: 0x5a5e66, glow: false, icon: '🏹' },
     { id: 3, name: 'Stalowy Łuk', price: 1000, draw: 0.85, speed: 61, mul: 2.1, c1: 0x5fb0d8, c2: 0x2a6a8a, glow: false, icon: '🏹' },
     { id: 4, name: 'Mistrzowski Łuk', price: 1500, draw: 0.7, speed: 68, mul: 2.8, c1: 0xffc93c, c2: 0x8a6a1e, glow: true, icon: '🏹' },
-    { id: 5, name: 'Legendarny Łuk', price: 2000, draw: 0.55, speed: 76, mul: 3.8, c1: 0xc56bff, c2: 0x6a2e8a, glow: true, icon: '🏹' }
+    { id: 5, name: 'Legendarny Łuk', price: 2000, draw: 0.55, speed: 76, mul: 3.8, c1: 0xc56bff, c2: 0x6a2e8a, glow: true, icon: '🏹' },
+    { id: 6, name: 'Łuk z Gałęzi', craft: { wood: 6 }, draw: 1.1, speed: 48, mul: 1.15, c1: 0x7a5a3c, c2: 0x4a3a22, glow: false, icon: '🌿' },
+    { id: 7, name: 'Dębowy Łuk', craft: { wood: 14, stone: 4 }, draw: 0.95, speed: 56, mul: 1.75, c1: 0xb07a40, c2: 0x5a3c1e, glow: false, icon: '🌳' },
+    { id: 8, name: 'Łuk Łowcy', craft: { wood: 18, stone: 12, iron: 2 }, draw: 0.82, speed: 62, mul: 2.4, c1: 0x6e8a4a, c2: 0x3a4a22, glow: false, icon: '🦌' },
+    { id: 9, name: 'Żelazny Łuk', craft: { wood: 12, stone: 6, iron: 10 }, draw: 0.68, speed: 70, mul: 3.1, c1: 0x9aa3b0, c2: 0x4a4f58, glow: false, icon: '⛓️' },
+    { id: 10, name: 'Kryształowy Łuk', craft: { wood: 10, iron: 12, crystal: 6 }, draw: 0.5, speed: 82, mul: 4.6, c1: 0xb070ff, c2: 0x5a2a9a, glow: true, icon: '💎' }
   ];
   const bowModels = BOWS.map(b => makeBowModel(b.c1, b.c2, b.glow));
 
   // third-person hand bow
   let handBow3p = null;
-  function setAvatarBow(idx) { if (handBow3p) avatar.userData.arms[1].remove(handBow3p); handBow3p = bowModels[idx].clone(); handBow3p.scale.setScalar(1.3); handBow3p.position.set(0, -0.62, 0.12); handBow3p.rotation.set(0, 1.6, 0); avatar.userData.arms[1].add(handBow3p); }
+  function setAvatarBow(idx) { if (handBow3p) avatar.userData.arms[1].remove(handBow3p); handBow3p = bowModels[idx].clone(); handBow3p.scale.setScalar(1.25); handBow3p.position.set(0, -0.68, 0.05); handBow3p.rotation.set(Math.PI / 2, Math.PI / 2, 0); avatar.userData.arms[1].add(handBow3p); }
+  const toolMesh = (() => { const g = new THREE.Group(); const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.95, 6), STD(0x7a5a3c)); handle.rotation.x = Math.PI / 2; handle.position.z = 0.3; g.add(handle);
+    box(g, 0.08, 0.34, 0.26, STD(0x9aa3b0, { metalness: 0.55, roughness: 0.35 }), 0, 0.12, 0.72); box(g, 0.06, 0.18, 0.12, STD(0x9aa3b0, { metalness: 0.55, roughness: 0.35 }), 0, -0.1, 0.74);
+    g.position.set(0, -0.7, 0.04); g.visible = false; avatar.userData.arms[0].add(g); return g; })();
 
   // first-person hand + bow rig
   const fpRig = new THREE.Group(); camera.add(fpRig);
@@ -445,13 +607,13 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 
   // ================= STATE / SAVE =================
   const SAVE = 'bow-shot-v1';
-  let S = { cash: 0, owned: [true, false, false, false, false, false], equipped: 0, bossesWon: [false, false, false], unlocked: 0, done: new Array(10).fill(false), aim: true };
+  let S = { cash: 0, res: { wood: 0, stone: 0, iron: 0, crystal: 0 }, owned: [true, false, false, false, false, false, false, false, false, false, false], equipped: 0, bossesWon: [false, false, false], unlocked: 0, done: new Array(10).fill(false), aim: true };
   let hasSave = false;
-  try { const d = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (d) { S = Object.assign(S, d); hasSave = true; } } catch (e) {}
+  try { const d = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (d) { const def = S; S = Object.assign({}, def, d); S.res = Object.assign({}, def.res, d.res || {}); while (S.owned.length < 11) S.owned.push(false); if (!S.done || S.done.length < 10) S.done = def.done; hasSave = true; } } catch (e) {}
   function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} }
   function fmtM(n) { if (n < 1000) return '$' + Math.round(n); const u = ['K', 'M']; let i = -1; while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; } return '$' + (n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : Math.round(n)) + u[i]; }
   function earn(v) { S.cash += v; }
-  function allBowsOwned() { return S.owned.every(Boolean); }
+  function allBowsOwned() { return [1, 2, 3, 4, 5].every(i => S.owned[i]); }
 
   // ================= PLAYER =================
   const P = { x: BUNK.x, y: 0, z: BUNK.z + 2, vx: 0, vz: 0, yaw: 0, pitch: 0, zone: 'bunker', camT: 1, hearts: 3, hurtT: 0 };
@@ -503,13 +665,15 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 
   // ================= DRAW / SHOOT =================
   let drawing = false, drawT = 0, canShoot = true, bossCheat = false;
-  const activeBowIdx = () => bossCheat ? 5 : S.equipped;
+  const activeBowIdx = () => bossCheat ? 10 : S.equipped;
   function startDraw() {
+    if (state === 'play' && !paused && P.zone === 'forest') { swingHeld = true; doSwing(); return; }
     if (state !== 'play' || paused || (P.zone !== 'range' && P.zone !== 'boss') || !canShoot) return;
     if (!bossMode && LV.over) return;
     if (!bossMode && LV.arrows <= 0) { tip('Brak strzał. Poczekaj, aż ostatnie strzały dolecą.'); return; }
-    drawing = true; drawT = 0; SFX.draw(); $('power').style.display = 'block'; if (fpArrowNock) fpRig.remove(fpArrowNock); fpArrowNock = makeArrowMesh(0.5); fpArrowNock.position.set(0.1, -0.02, -0.25); fpArrowNock.rotation.y = Math.PI / 2; fpBow.add(fpArrowNock); }
+    drawing = true; drawT = 0; SFX.draw(); $('power').style.display = 'block'; }
   function releaseDraw() {
+    swingHeld = false;
     if (!drawing) return; drawing = false; $('power').style.display = 'none';
     const bow = BOWS[activeBowIdx()], power = clamp(drawT / bow.draw, 0.22, 1);
     if (fpArrowNock) { fpBow.remove(fpArrowNock); fpArrowNock = null; }
@@ -518,9 +682,25 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     fireArrow(power, bow); canShoot = false; setTimeout(() => canShoot = true, 120);
   }
   const arrows = [];
+  function aimPoint(o, d) {
+    let best = 140;
+    if (d.y < -0.001) best = Math.min(best, -o.y / d.y);
+    for (const t of targets) {
+      if (t.down || Math.abs(d.z) < 1e-4) continue;
+      const tp = t.g.position, k = (tp.z - o.z) / d.z;
+      if (k > 0 && k < best) { const px = o.x + d.x * k - tp.x, py = o.y + d.y * k - tp.y; if (px * px + py * py <= t.radius * t.radius * 1.3) best = k; }
+    }
+    if (boss && boss.alive) {
+      const bx = boss.x - o.x, by = boss.hitY - o.y, bz = boss.z - o.z, k = bx * d.x + by * d.y + bz * d.z;
+      if (k > 0 && k < best) { const cx = o.x + d.x * k - boss.x, cy = o.y + d.y * k - boss.hitY, cz = o.z + d.z * k - boss.z; if (cx * cx + cy * cy + cz * cz <= boss.hitR * boss.hitR * 2) best = k; }
+    }
+    return new THREE.Vector3(o.x + d.x * best, o.y + d.y * best, o.z + d.z * best);
+  }
   function launchParams(power, bow) {
-    const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
-    const origin = new THREE.Vector3(); fpBow.getWorldPosition(origin); origin.addScaledVector(dir, 0.15);
+    const camDir = new THREE.Vector3(); camera.getWorldDirection(camDir);
+    const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
+    const origin = new THREE.Vector3(P.x - rx * 0.3 + fx * 0.7, 1.55, P.z - rz * 0.3 + fz * 0.7);
+    const dir = aimPoint(camera.position, camDir).sub(origin).normalize();
     return { dir, origin, speed: bow.speed * (0.55 + 0.45 * power) };
   }
   // dotted trajectory preview (aim helper, can be switched off with the target button)
@@ -604,6 +784,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   function renderShop() {
     $('bowlist').innerHTML = '';
     BOWS.forEach((b, i) => {
+      if (i > 5) return;
       const owned = S.owned[i], prevOwned = i === 0 || S.owned[i - 1], can = !owned && prevOwned && S.cash >= b.price;
       const row = document.createElement('div'); row.className = 'bowrow';
       row.innerHTML = `<div class="ic" style="background:${owned ? '#EEF6FF' : '#F2F2F2'}">${b.icon}</div><div class="tx"><b>${b.name}</b><small>${owned ? 'Masz · naciąg ' + b.draw.toFixed(2) + 's · mnożnik x' + b.mul.toFixed(1) : (prevOwned ? fmtM(b.price) : 'Kup wcześniejszy łuk')}</small></div>`;
@@ -738,16 +919,43 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 
   // ================= INTERACT =================
   function nearestZone() {
-    const dShop = Math.hypot(P.x - SHOP.x, P.z - SHOP.z), dPortal = Math.hypot(P.x - PORTAL.x, P.z - PORTAL.z), dBoard = Math.hypot(P.x - BOARD.x, P.z - (BOARD.z - 0.4));
-    if (dShop < 2.6) return 'shop'; if (dPortal < 2.6) return 'portal'; if (dBoard < 2.6) return 'board'; return null;
+    const dShop = Math.hypot(P.x - SHOP.x, P.z - SHOP.z), dPortal = Math.hypot(P.x - PORTAL.x, P.z - PORTAL.z), dBoard = Math.hypot(P.x - BOARD.x, P.z - (BOARD.z - 0.4)), dBench = Math.hypot(P.x - BENCH.x, P.z - BENCH.z);
+    if (dShop < 2.8) return 'shop'; if (dBench < 2.8) return 'bench'; if (dPortal < 2.8) return 'portal'; if (dBoard < 2.8) return 'board'; return null;
   }
+  function updRes() { $('resPill').innerHTML = Object.keys(RES_ICON).map(k => `<span title="${RES_NAME[k]}">${RES_ICON[k]} ${S.res[k] || 0}</span>`).join(''); }
+  function canCraft(i) { const b = BOWS[i]; if (!b.craft || S.owned[i]) return false; if (i > 6 && !S.owned[i - 1]) return false; return Object.keys(b.craft).every(k => (S.res[k] || 0) >= b.craft[k]); }
+  function craftBow(i) {
+    if (!canCraft(i)) { SFX.no(); return false; }
+    const b = BOWS[i]; for (const k in b.craft) S.res[k] -= b.craft[k];
+    S.owned[i] = true; S.equipped = i; save(); setFpBow(i); setAvatarBow(i); updBowPill(); updRes(); SFX.craft();
+    banner('Stworzono: ' + b.name, 'Mnożnik kasy x' + b.mul.toFixed(2), 2000); return true;
+  }
+  function renderCraft() {
+    $('craftRes').innerHTML = Object.keys(RES_ICON).map(k => `<span>${RES_ICON[k]} ${RES_NAME[k]}: ${S.res[k] || 0}</span>`).join('');
+    $('craftlist').innerHTML = '';
+    BOWS.forEach((b, i) => {
+      if (!b.craft) return;
+      const owned = S.owned[i], prevOk = i === 6 || S.owned[i - 1];
+      const cost = Object.keys(b.craft).map(k => `<span class="cost ${(S.res[k] || 0) >= b.craft[k] ? 'ok' : 'no'}">${RES_ICON[k]} ${S.res[k] || 0}/${b.craft[k]}</span>`).join('');
+      const row = document.createElement('div'); row.className = 'bowrow';
+      row.innerHTML = `<div class="ic" style="background:${owned ? '#EEF6FF' : '#F2F2F2'}">${b.icon}</div><div class="tx"><b>${b.name}</b><small>${owned ? 'Masz · naciąg ' + b.draw.toFixed(2) + 's · mnożnik x' + b.mul.toFixed(2) : prevOk ? cost : 'Najpierw stwórz poprzedni łuk'}</small></div>`;
+      const btn = document.createElement('button');
+      if (owned) { btn.textContent = S.equipped === i ? 'Założony' : 'Załóż'; btn.className = S.equipped === i ? 'eq' : ''; btn.disabled = S.equipped === i; btn.onclick = () => { S.equipped = i; save(); setFpBow(i); setAvatarBow(i); updBowPill(); renderCraft(); SFX.click(); }; }
+      else { btn.textContent = 'Stwórz'; btn.disabled = !canCraft(i); btn.onclick = () => { if (craftBow(i)) renderCraft(); }; }
+      row.appendChild(btn); $('craftlist').appendChild(row);
+    });
+  }
+  function openCraft() { renderCraft(); $('craft').classList.remove('hide'); paused = true; drawing = false; swingHeld = false; if (document.pointerLockElement) document.exitPointerLock(); }
+  function closeCraft() { $('craft').classList.add('hide'); paused = false; }
   function onInteract() {
     if (state !== 'play') return;
     if (!$('shop').classList.contains('hide')) { closeShop(); return; }
     if (!$('board').classList.contains('hide')) { closeBoard(); return; }
+    if (!$('craft').classList.contains('hide')) { closeCraft(); return; }
     if (paused || bossMode) return;
     const z = nearestZone();
     if (z === 'shop') openShop();
+    else if (z === 'bench') openCraft();
     else if (z === 'board') openBoard();
     else if (z === 'portal') { if (allBowsOwned()) openBossSelect(); else { tip('Kup najpierw wszystkie 5 łuków'); SFX.no(); } }
   }
@@ -816,41 +1024,57 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     P.vx += (mx * SPEED - P.vx) * k; P.vz += (mz * SPEED - P.vz) * k;
     let nx = P.x + P.vx * dt, nz = P.z + P.vz * dt;
     const c = collide(nx, nz); P.x = c.x; P.z = c.z;
-    if (!bossMode) { P.x = clamp(P.x, -RANGE_W / 2 + 0.6, RANGE_W / 2 - 0.6); P.z = clamp(P.z, -RANGE_LEN - 8, BUNK.z + BUNK.hd - 0.5); }
+    if (!bossMode) {
+      if (P.z > BUNK.z + BUNK.hd + 0.4) { P.x = clamp(P.x, FOREST.x0 - 0.2, FOREST.x1 + 0.2); P.z = Math.min(P.z, FOREST.z1 + 0.1); }
+      else { P.x = clamp(P.x, -RANGE_W / 2 + 0.6, RANGE_W / 2 - 0.6); P.z = Math.max(P.z, -RANGE_LEN - 8); }
+    }
     else { const dx = P.x - BOSS_ARENA.x, dz = P.z - BOSS_ARENA.z, d = Math.hypot(dx, dz); if (d > BOSS_ARENA.r - 1.2) { P.x = BOSS_ARENA.x + dx / d * (BOSS_ARENA.r - 1.2); P.z = BOSS_ARENA.z + dz / d * (BOSS_ARENA.r - 1.2); } }
-    P.zone = bossMode ? 'boss' : (inBunker(P.x, P.z) ? 'bunker' : 'range');
-    const targetCamT = P.zone === 'bunker' ? 0 : 1; P.camT += (targetCamT - P.camT) * clamp(dt * 3.2, 0, 1);
+    P.zone = bossMode ? 'boss' : (P.z > BUNK.z + BUNK.hd + 0.4 ? 'forest' : inBunker(P.x, P.z) ? 'bunker' : 'range');
     P.hurtT = Math.max(0, P.hurtT - dt);
     hurtFlashT = Math.max(0, hurtFlashT - dt * 2.4); $('hurtFlash').style.opacity = hurtFlashT > 0 ? Math.min(1, hurtFlashT * 2) : 0;
     if (drawing) { drawT += dt; const bow = BOWS[activeBowIdx()]; $('powerI').style.width = Math.min(100, drawT / bow.draw * 100) + '%'; if (fpArrowNock) fpArrowNock.visible = true; }
-    updateTargets(dt, T); arrowStep(dt); if (bossMode) bossStep(dt, T); else levelCheck(dt); updateTraj();
+    updateTargets(dt, T); arrowStep(dt); if (bossMode) bossStep(dt, T); else levelCheck(dt); updateTraj(); nodeStep(dt); swingStep(dt);
+    const sb = $('shootBtn'), lbl = P.zone === 'forest' ? 'Uderz' : 'Strzel'; if (sb.textContent !== lbl) sb.textContent = lbl;
     for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.life -= dt; p.vy -= 10 * dt; p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.material.opacity = Math.max(0, p.life * 2); p.m.material.transparent = true; if (p.life <= 0) { scene.remove(p.m); parts.splice(i, 1); } }
     for (let i = floats.length - 1; i >= 0; i--) { const f2 = floats[i]; f2.life -= dt; f2.s.position.y += f2.vy * dt; f2.s.material.opacity = Math.min(1, f2.life * 1.6); if (f2.life <= 0) { scene.remove(f2.s); f2.s.material.map.dispose(); f2.s.material.dispose(); floats.splice(i, 1); } }
     const z = nearestZone();
-    if (!bossMode && z && P.zone === 'bunker') { $('interact').style.display = 'block'; $('interact').textContent = z === 'shop' ? (isTouch ? 'Wejdź: sklep z łukami' : 'E: sklep z łukami') : z === 'board' ? (isTouch ? 'Wejdź: wybór poziomu' : 'E: wybór poziomu') : (allBowsOwned() ? (isTouch ? 'Wejdź: wybierz bossa' : 'E: wybierz bossa') : (isTouch ? 'Zablokowane: kup wszystkie łuki' : 'Zablokowane: kup wszystkie łuki')); $('intBtn').style.display = isTouch ? 'block' : 'none'; }
+    const near = P.zone === 'forest' ? findNode() : null;
+    if (near) { $('interact').style.display = 'block'; const y = near.def.yield; $('interact').textContent = (isTouch ? 'Uderz: ' : 'LPM: ') + near.def.label + ' ' + Object.keys(y).map(k => '+' + y[k] + RES_ICON[k]).join(' ') + '  (' + near.hp + '/' + near.def.hp + ')'; $('intBtn').style.display = 'none'; }
+    else if (!bossMode && z && P.zone === 'bunker') { $('interact').style.display = 'block'; $('interact').textContent = z === 'shop' ? (isTouch ? 'Wejdź: sklep z łukami' : 'E: sklep z łukami') : z === 'bench' ? (isTouch ? 'Wejdź: warsztat (crafting łuków)' : 'E: warsztat (crafting łuków)') : z === 'board' ? (isTouch ? 'Wejdź: wybór poziomu' : 'E: wybór poziomu') : (allBowsOwned() ? (isTouch ? 'Wejdź: wybierz bossa' : 'E: wybierz bossa') : (isTouch ? 'Zablokowane: kup wszystkie łuki' : 'Zablokowane: kup wszystkie łuki')); $('intBtn').style.display = isTouch ? 'block' : 'none'; }
     else { $('interact').style.display = 'none'; $('intBtn').style.display = 'none'; }
     updCash();
   }
+  let camDistS = 4.6;
+  function camBlocked(x, y, z) {
+    if (y < 0.35) return true;
+    if (underRoof(x, z) && y > WALL_H - 0.35) return true;
+    for (const so of solids) if (y < so.h + 0.2 && x > so.x0 - 0.25 && x < so.x1 + 0.25 && z > so.z0 - 0.25 && z < so.z1 + 0.25) return true;
+    return false;
+  }
   function visuals(dt) {
-    avatar.position.set(P.x, 0, P.z); avatar.rotation.y = P.yaw;
+    avatar.position.set(P.x, 0, P.z); avatar.rotation.y = P.yaw + Math.PI; // model faces +Z, the player looks along -Z at yaw 0
     avShadow.position.set(P.x, 0.03, P.z);
-    const u = avatar.userData, speed = Math.hypot(P.vx, P.vz);
-    if (speed > 0.2) { u.walk += dt * speed * 1.5; const sw = Math.sin(u.walk) * Math.min(1, speed / 5.4) * 0.8; u.legs[0].rotation.x = sw; u.legs[1].rotation.x = -sw; if (P.camT < 0.5) { u.arms[0].rotation.x = -sw * 0.6; } } else { u.legs[0].rotation.x *= 0.9; u.legs[1].rotation.x *= 0.9; }
-    avatar.visible = P.camT < 0.98;
+    const u = avatar.userData, speed = Math.hypot(P.vx, P.vz), forest = P.zone === 'forest';
+    if (speed > 0.2) { u.walk += dt * speed * 1.5; const sw = Math.sin(u.walk) * Math.min(1, speed / 5.4) * 0.8; u.legs[0].rotation.x = sw; u.legs[1].rotation.x = -sw; u.arms[0].rotation.x = -sw * 0.6; u.arms[1].rotation.x = sw * 0.5; }
+    else { u.legs[0].rotation.x *= 0.85; u.legs[1].rotation.x *= 0.85; u.arms[0].rotation.x *= 0.85; u.arms[1].rotation.x *= 0.85; }
+    u.arms[0].rotation.z = 0; u.arms[1].rotation.z = 0;
+    if (drawing) { const pull = Math.min(1, drawT / BOWS[activeBowIdx()].draw); u.arms[1].rotation.x = -1.5 - P.pitch * 0.9; u.arms[0].rotation.x = -1.5 - P.pitch * 0.9 + pull * 0.35; u.arms[0].rotation.z = -0.5 * pull; }
+    else if (swingT > 0) { const k = 1 - swingT / 0.34; u.arms[0].rotation.x = -2.7 + k * 2.6; }
+    else if (!forest && P.zone !== 'bunker' && speed < 0.2) u.arms[1].rotation.x = -0.35;
+    toolMesh.visible = forest; if (handBow3p) handBow3p.visible = !forest;
+    avatar.visible = true; fpRig.visible = false;
     recoilT = Math.max(0, recoilT - dt * 5);
-    fpRig.position.set(0, -recoilT * 0.05, recoilT * 0.08);
-    if (fpBow) { const bow = BOWS[activeBowIdx()]; const pull = drawing ? Math.min(1, drawT / bow.draw) : 0; fpBow.position.copy(fpBowBase); fpBow.position.z += pull * 0.08; const str = fpBow.getObjectByName('string'); if (str) str.position.x = 0.1 - pull * 0.12; if (fpArrowNock) fpArrowNock.position.set(0.1 - pull * 0.12, -0.02, -0.25); }
-    // camera blend: third person orbit (bunker) <-> first person (range/boss)
-    const eyeY = 1.62;
-    const camDist = 4.2, camH = 1.1;
-    const tpX = P.x + Math.sin(P.yaw) * camDist, tpZ = P.z + Math.cos(P.yaw) * camDist, tpY = eyeY + camH + Math.sin(P.pitch) * 1.5;
-    const fpX = P.x, fpY = P.y + eyeY, fpZ = P.z;
-    const cx = tpX + (fpX - tpX) * P.camT, cy = tpY + (fpY - tpY) * P.camT, cz = tpZ + (fpZ - tpZ) * P.camT;
-    camera.position.set(cx, cy, cz);
-    if (P.camT > 0.5) { camera.rotation.set(P.pitch, P.yaw, 0); }
-    else { const lx = P.x, ly = eyeY, lz = P.z; camera.lookAt(lx, ly, lz); }
-    camera.fov = 68 + (drawing ? -4 * Math.min(1, drawT / BOWS[activeBowIdx()].draw) : 0); camera.updateProjectionMatrix();
-    $('cross').style.display = P.camT > 0.7 ? 'block' : 'none';
+    // camera orbits a point above the right shoulder; screen centre = aim ray
+    const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
+    const dir = { x: -Math.sin(P.yaw) * Math.cos(P.pitch), y: Math.sin(P.pitch), z: -Math.cos(P.yaw) * Math.cos(P.pitch) };
+    const piv = { x: P.x + rx * 0.7, y: 2.05, z: P.z + rz * 0.7 };
+    let want = drawing ? 3.3 : (P.zone === 'bunker' ? 4.2 : 4.8);
+    let safe = want; for (let t = 0.5; t <= want; t += 0.15) if (camBlocked(piv.x - dir.x * t, piv.y - dir.y * t + 0.55, piv.z - dir.z * t)) { safe = Math.max(0.6, t - 0.3); break; }
+    camDistS += (safe - camDistS) * clamp(dt * (safe < camDistS ? 18 : 5), 0, 1); if (!(dt > 0)) camDistS = safe;
+    camera.position.set(piv.x - dir.x * camDistS, piv.y - dir.y * camDistS + 0.55, piv.z - dir.z * camDistS);
+    camera.rotation.set(P.pitch, P.yaw, 0);
+    camera.fov = 66 + (drawing ? -6 * Math.min(1, drawT / BOWS[activeBowIdx()].draw) : 0); camera.updateProjectionMatrix();
+    $('cross').style.display = (P.zone === 'range' || P.zone === 'boss') ? 'block' : 'none';
     sun.position.set(P.x + 25, 45, P.z + 15); sun.target.position.set(P.x, 0, P.z);
     renderer.render(scene, camera);
   }
@@ -859,18 +1083,18 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   let T = 0;
   function startGame() {
     state = 'play'; paused = false; $('menu').classList.add('hide');
-    setFpBow(activeBowIdx()); setAvatarBow(activeBowIdx()); updBowPill(); updCash(); setPortalUnlocked(allBowsOwned()); updLevelHud();
+    setFpBow(activeBowIdx()); setAvatarBow(activeBowIdx()); updBowPill(); updCash(); setPortalUnlocked(allBowsOwned()); updLevelHud(); updRes();
     P.x = BUNK.x; P.z = BUNK.z; P.yaw = 0; P.pitch = 0; P.camT = 0;
-    tip(isTouch ? 'Wyjdź z bunkra na strzelnicę. Zbij wszystkie tarcze, zanim skończą się strzały.' : 'Kliknij, żeby rozejrzeć się myszką. WASD: ruch, trzymaj LPM: naciągnij łuk, puść: strzał, E: sklep i poziomy.');
+    tip(isTouch ? 'Przód bunkra: strzelnica. Tylne drzwi: las z drzewami i kamieniami. Przeciągnij palcem, żeby się rozglądać.' : 'Kliknij, żeby sterować myszką. WASD: ruch, LPM: strzał (strzelnica) lub uderzenie (las), E: sklep, warsztat, poziomy.');
   }
-  function togglePause() { if (state !== 'play') return; if ($('shop').classList.contains('hide') === false || $('board').classList.contains('hide') === false || $('bossSelect').classList.contains('hide') === false) return; if (!$('pause').classList.contains('hide')) { $('pause').classList.add('hide'); paused = false; } else if ($('result').classList.contains('hide')) { $('pause').classList.remove('hide'); paused = true; drawing = false; $('power').style.display = 'none'; if (document.pointerLockElement) document.exitPointerLock(); } }
+  function togglePause() { if (state !== 'play') return; if ($('shop').classList.contains('hide') === false || $('board').classList.contains('hide') === false || $('craft').classList.contains('hide') === false || $('bossSelect').classList.contains('hide') === false) return; if (!$('pause').classList.contains('hide')) { $('pause').classList.add('hide'); paused = false; } else if ($('result').classList.contains('hide')) { $('pause').classList.remove('hide'); paused = true; drawing = false; $('power').style.display = 'none'; if (document.pointerLockElement) document.exitPointerLock(); } }
   function toggleSound() { muted = !muted; $('soundBtn').textContent = muted ? '🔇' : '🔊'; }
   $('startBtn').addEventListener('click', () => { ac(); startGame(); });
   $('newBtn').addEventListener('click', () => { if (confirm('Na pewno skasować cały postęp?')) { try { localStorage.removeItem(SAVE); } catch (e) {} location.reload(); } });
   $('pauseBtn').addEventListener('click', togglePause); $('resumeBtn').addEventListener('click', togglePause);
   $('menuBtn').addEventListener('click', () => { $('pause').classList.add('hide'); paused = false; state = 'menu'; $('menu').classList.remove('hide'); if (document.pointerLockElement) document.exitPointerLock(); });
   $('soundBtn').addEventListener('click', toggleSound);
-  $('shopClose').addEventListener('click', closeShop); $('bossClose').addEventListener('click', closeBossSelect); $('boardClose').addEventListener('click', closeBoard);
+  $('shopClose').addEventListener('click', closeShop); $('bossClose').addEventListener('click', closeBossSelect); $('boardClose').addEventListener('click', closeBoard); $('craftClose').addEventListener('click', closeCraft);
   $('aimBtn').style.opacity = S.aim ? 1 : 0.4;
   $('aimBtn').addEventListener('click', () => { S.aim = !S.aim; save(); $('aimBtn').style.opacity = S.aim ? 1 : 0.4; if (!S.aim) hideTraj(); });
   function tryCode() {
@@ -903,6 +1127,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   globalThis.__bs = {
     ringAt, fmtM, collide, BOWS, get S(){return S;}, save, earn, allBowsOwned,
     get P(){return P;}, step, targets, arrows, fireArrow, arrowStep, registerHit,
+    NODES, findNode, hitNode, doSwing, swingStep, nodeStep, canCraft, craftBow, renderCraft, openCraft, closeCraft, aimPoint, launchParams, FOREST, BENCH, camBlocked, get camDistS(){return camDistS;}, get swingT(){return swingT;},
     LEVELS, LV, buildLevel, completeLevel, failLevel, levelCheck, renderBoard, openBoard, closeBoard, tryCode, makeArrowMesh, activeBowIdx, G, updateTraj, hideTraj, trajDots, updateTargets, startDraw, releaseDraw, get bossCheat(){return bossCheat;}, get drawing(){return drawing;}, set drawing(v){drawing=v;},
     renderShop, openShop, closeShop, checkAllBows, BOSS_DEFS, startBoss, boss: ()=>boss, bossHit, bossStep,
     nearestZone, onInteract, SHOP, PORTAL, BUNK, inBunker, visuals, camera, fpRig, fpBowBase, get fpBow(){return fpBow;},
