@@ -87,8 +87,10 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   <div class="hud">
     <div class="pill cash">💰 <b id="cashT">$0</b></div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-      <div style="display:flex;gap:6px"><button class="ibtn" id="soundBtn">🔊</button><button class="ibtn" id="pauseBtn">II</button></div>
+      <div style="display:flex;gap:6px"><button class="ibtn" id="aimBtn" title="Linia lotu strzały">🎯</button><button class="ibtn" id="soundBtn">🔊</button><button class="ibtn" id="pauseBtn">II</button></div>
       <div class="pill" id="bowPill">Łuk: Zwykły</div>
+      <div class="pill" id="lvlPill">Poziom 1/10</div>
+      <div class="pill" id="arrowPill">🏹 0 · 🎯 0/0</div>
       <div class="hearts" id="hearts" style="display:none"></div>
     </div>
   </div>
@@ -103,7 +105,9 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     <h1>Bow<span>Shot</span></h1>
     <p>Wyjdź z betonowego bunkra na strzelnicę, trafiaj w tarcze i zbieraj kasę. Kup wszystkie łuki, żeby odblokować bossa.</p>
     <div class="btns"><button class="play" id="startBtn">Graj</button><button class="play alt" id="newBtn" style="display:none">Nowa gra (kasuje postęp)</button></div>
-    <p id="hint" style="font-size:13px;margin-top:12px"></p>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:14px"><input id="codeIn" inputmode="numeric" maxlength="8" placeholder="kod" aria-label="Kod" style="width:110px;font:400 20px 'Lilita One',sans-serif;text-align:center;border:3px solid #16213A;border-radius:12px;padding:6px;color:#16213A;letter-spacing:4px"><button class="play alt" id="codeBtn" style="min-width:0;padding:6px 16px;font-size:18px">OK</button></div>
+    <p id="codeMsg" style="font-size:13px;margin:6px 0 0;min-height:18px"></p>
+    <p id="hint" style="font-size:13px;margin-top:8px"></p>
   </div></div>
   <div class="overlay hide" id="pause"><div class="card">
     <h2>Pauza</h2>
@@ -114,6 +118,12 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     <p>Kupuj po kolei. Lepszy łuk szybciej się naciąga, mocniej strzela i daje więcej kasy za trafienie.</p>
     <div class="bowlist" id="bowlist"></div>
     <button class="play alt" id="shopClose">Zamknij (E)</button>
+  </div></div>
+  <div class="overlay hide" id="board"><div class="card">
+    <h2>Poziomy</h2>
+    <p>Każda tarcza płaci raz i się przewraca. Zbij wszystkie, zanim skończą ci się strzały. Poziomy odblokowują się po kolei.</p>
+    <div class="bowlist" id="boardlist"></div>
+    <button class="play alt" id="boardClose">Zamknij (E)</button>
   </div></div>
   <div class="overlay hide" id="bossSelect"><div class="card">
     <h2>Wybierz bossa</h2>
@@ -260,6 +270,16 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     addSolid(SHOP.x, SHOP.z, 1.6, 1, 'shop');
   })();
 
+  // ---- level board on the back wall ----
+  const BOARD = { x: 0, z: 10.9 };
+  (function buildBoard() {
+    const g = new THREE.Group(); g.position.set(BOARD.x, 0, BOARD.z); scene.add(g);
+    box(g, 3.6, 2.2, 0.25, STD(0x2b3a5c), 0, 1.9, 0.62); box(g, 3.9, 0.18, 0.4, STD(0x6b4a2e), 0, 0.8, 0.6);
+    for (let i = 0; i < 5; i++) { box(g, 0.5, 0.5, 0.05, STD(i < 2 ? 0x3ddc84 : 0xffc93c), -1.4 + i * 0.7, 2.25, 0.46, false); box(g, 0.5, 0.5, 0.05, STD(0x9aa0aa), -1.4 + i * 0.7, 1.55, 0.46, false); }
+    const sign = textSprite('POZIOMY', '#ffffff', 44, '#4F9DFF'); sign.position.set(0, 3.35, 0.4); sign.scale.multiplyScalar(0.9); g.add(sign);
+    addSolid(BOARD.x, BOARD.z + 0.62, 2, 0.3, 'board');
+  })();
+
   // ---- boss portal inside bunker ----
   const PORTAL = { x: 4.3, z: 8.5 };
   let portalRing, portalGlow, portal_group, portal_lock;
@@ -303,8 +323,9 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
   }
   const targetTex = targetTexture();
+  const G = 10; // arrow gravity (m/s^2)
   const targets = [];
-  function makeTarget(x, z, y, radius, swing) {
+  function makeTarget(x, z, y, radius, swing, phase) {
     const g = new THREE.Group(); g.position.set(x, y, z); scene.add(g);
     const legM = STD(0x7a5a3c);
     box(g, 0.18, y, 0.18, legM, -radius * 0.55, -y / 2, 0); box(g, 0.18, y, 0.18, legM, radius * 0.55, -y / 2, 0);
@@ -312,19 +333,44 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const face = new THREE.Mesh(new THREE.CircleGeometry(radius, 28), new THREE.MeshStandardMaterial({ map: targetTex, roughness: 0.8 }));
     face.castShadow = true; face.receiveShadow = true; g.add(face);
     const back = new THREE.Mesh(new THREE.CircleGeometry(radius, 28), STD(0xC9A876)); back.rotation.y = Math.PI; back.position.z = -0.08; g.add(back);
-    const t = { g, x, z, y, radius, swing: swing || 0, phase: rnd(0, 6), arrows: [] };
+    const lab = textSprite(Math.round(-z) + ' m', '#ffffff', 40, 'rgba(22,33,58,.88)'); lab.position.set(0, radius + 0.55, 0); lab.scale.multiplyScalar(0.55); g.add(lab);
+    const t = { g, x, z, y, radius, swing: swing || 0, phase: phase || 0, down: false, fallT: 0, arrows: [] };
     targets.push(t); return t;
   }
-  // distances/lanes layout
-  const lanes = [-9, -5.5, -2.5, 0, 2.5, 5.5, 9];
-  const layout = [
-    [lanes[2], -16, 1.4, 1.1, 0], [lanes[4], -16, 1.5, 1.1, 0],
-    [lanes[1], -28, 1.5, 1.0, 0], [lanes[5], -30, 1.6, 1.0, 0],
-    [lanes[3], -40, 1.6, 0.95, 1], [lanes[0], -46, 1.7, 0.9, 0],
-    [lanes[6], -52, 1.7, 0.9, 0], [lanes[2], -62, 1.8, 0.85, 1],
-    [lanes[4], -70, 1.85, 0.8, 0], [lanes[3], -84, 1.9, 0.72, 1]
-  ];
-  layout.forEach(([x, z, y, r, sw]) => makeTarget(x, z, y, r, sw));
+  // ---- levels ----
+  function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const LEVEL_COUNT = 10;
+  function genLevel(L) {
+    const rng = mulberry(4000 + L * 131);
+    const n = Math.min(10, 3 + Math.ceil(L * 0.75));
+    const zMin = 14 + L * 1.5, zMax = Math.min(94, 24 + L * 7);
+    const radius = +(1.25 - L * 0.058).toFixed(2);
+    const movers = Math.floor((L - 1) * 0.45);
+    const slots = Array.from({ length: n }, (_, i) => -10 + 20 * (n === 1 ? 0.5 : i / (n - 1)));
+    for (let i = slots.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const tmp = slots[i]; slots[i] = slots[j]; slots[j] = tmp; }
+    const list = [];
+    for (let i = 0; i < n; i++) {
+      const f = n === 1 ? 0 : i / (n - 1), z = -Math.min(96, zMin + (zMax - zMin) * f + (rng() - 0.5) * 2.5);
+      list.push({ x: slots[i], z, y: +(1.3 + Math.abs(z) / 100 * 0.9 + rng() * 0.25).toFixed(2), r: radius, swing: 0, phase: rng() * 6 });
+    }
+    const mid = []; for (let i = 1; i < n - 1; i++) mid.push(i);
+    for (let k = 0; k < movers && mid.length; k++) list[mid.splice(Math.floor(rng() * mid.length), 1)[0]].swing = 2.0;
+    return { n: L, targets: list, arrows: n * 3 + 3 };
+  }
+  const LEVELS = Array.from({ length: LEVEL_COUNT }, (_, i) => genLevel(i + 1));
+  const LV = { i: 0, total: 0, left: 0, arrows: 0, over: false, failT: 0 };
+  function clearTargets() {
+    for (const t of targets) scene.remove(t.g);
+    targets.length = 0;
+    for (const a of arrows) if (a.mesh && a.mesh.parent) a.mesh.parent.remove(a.mesh);
+    arrows.length = 0;
+  }
+  function buildLevel(i) {
+    clearTargets(); const def = LEVELS[i];
+    def.targets.forEach(t => makeTarget(t.x, t.z, t.y, t.r, t.swing, t.phase));
+    LV.i = i; LV.total = targets.length; LV.left = targets.length; LV.arrows = def.arrows; LV.over = false; LV.failT = 0;
+    updLevelHud();
+  }
   // range boundary walls (low, decorative, blocks exit)
   (function buildRangeWalls() {
     const wm = STD(0xD9DEE8, { map: concreteTex });
@@ -365,12 +411,12 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     return g;
   }
   const BOWS = [
-    { id: 0, name: 'Zwykły Łuk', price: 0, draw: 1.3, speed: 32, mul: 1.0, c1: 0x9b6a3c, c2: 0x6b4a2e, glow: false, icon: '🏹' },
-    { id: 1, name: 'Myśliwski Łuk', price: 100, draw: 1.15, speed: 37, mul: 1.25, c1: 0xb98a5a, c2: 0x7a5a3a, glow: false, icon: '🏹' },
-    { id: 2, name: 'Wzmocniony Łuk', price: 500, draw: 1.0, speed: 42, mul: 1.6, c1: 0x8a8f99, c2: 0x5a5e66, glow: false, icon: '🏹' },
-    { id: 3, name: 'Stalowy Łuk', price: 1000, draw: 0.85, speed: 48, mul: 2.1, c1: 0x5fb0d8, c2: 0x2a6a8a, glow: false, icon: '🏹' },
-    { id: 4, name: 'Mistrzowski Łuk', price: 1500, draw: 0.7, speed: 55, mul: 2.8, c1: 0xffc93c, c2: 0x8a6a1e, glow: true, icon: '🏹' },
-    { id: 5, name: 'Legendarny Łuk', price: 2000, draw: 0.55, speed: 64, mul: 3.8, c1: 0xc56bff, c2: 0x6a2e8a, glow: true, icon: '🏹' }
+    { id: 0, name: 'Zwykły Łuk', price: 0, draw: 1.3, speed: 44, mul: 1.0, c1: 0x9b6a3c, c2: 0x6b4a2e, glow: false, icon: '🏹' },
+    { id: 1, name: 'Myśliwski Łuk', price: 100, draw: 1.15, speed: 49, mul: 1.25, c1: 0xb98a5a, c2: 0x7a5a3a, glow: false, icon: '🏹' },
+    { id: 2, name: 'Wzmocniony Łuk', price: 500, draw: 1.0, speed: 55, mul: 1.6, c1: 0x8a8f99, c2: 0x5a5e66, glow: false, icon: '🏹' },
+    { id: 3, name: 'Stalowy Łuk', price: 1000, draw: 0.85, speed: 61, mul: 2.1, c1: 0x5fb0d8, c2: 0x2a6a8a, glow: false, icon: '🏹' },
+    { id: 4, name: 'Mistrzowski Łuk', price: 1500, draw: 0.7, speed: 68, mul: 2.8, c1: 0xffc93c, c2: 0x8a6a1e, glow: true, icon: '🏹' },
+    { id: 5, name: 'Legendarny Łuk', price: 2000, draw: 0.55, speed: 76, mul: 3.8, c1: 0xc56bff, c2: 0x6a2e8a, glow: true, icon: '🏹' }
   ];
   const bowModels = BOWS.map(b => makeBowModel(b.c1, b.c2, b.glow));
 
@@ -388,8 +434,8 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   function makeArrowMesh(scale) {
     const g = new THREE.Group();
     const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.62, 6), STD(0x8a6238)); shaft.rotation.x = Math.PI / 2; g.add(shaft);
-    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.09, 6), STD(0xcccccc, { metalness: 0.6, roughness: 0.3 })); tip.position.z = -0.35; tip.rotation.x = -Math.PI / 2; g.add(tip);
-    [0, 2.1, 4.2].forEach(a => { const f = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.11, 3), STD(0xE8445A)); f.position.z = 0.28; f.rotation.x = Math.PI / 2; f.rotation.z = a; g.add(f); });
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.022, 0.09, 6), STD(0xcccccc, { metalness: 0.6, roughness: 0.3 })); tip.position.z = 0.35; tip.rotation.x = Math.PI / 2; g.add(tip);
+    [0, 2.1, 4.2].forEach(a => { const f = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.11, 3), STD(0xE8445A)); f.position.z = -0.28; f.rotation.x = -Math.PI / 2; f.rotation.z = a; g.add(f); });
     g.scale.setScalar(scale || 1); return g;
   }
 
@@ -399,7 +445,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 
   // ================= STATE / SAVE =================
   const SAVE = 'bow-shot-v1';
-  let S = { cash: 0, owned: [true, false, false, false, false, false], equipped: 0, bossesWon: [false, false, false] };
+  let S = { cash: 0, owned: [true, false, false, false, false, false], equipped: 0, bossesWon: [false, false, false], unlocked: 0, done: new Array(10).fill(false), aim: true };
   let hasSave = false;
   try { const d = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (d) { S = Object.assign(S, d); hasSave = true; } } catch (e) {}
   function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} }
@@ -456,19 +502,43 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   tbtn('intBtn', () => onInteract());
 
   // ================= DRAW / SHOOT =================
-  let drawing = false, drawT = 0, canShoot = true;
-  function startDraw() { if (state !== 'play' || paused || P.zone !== 'range' || !canShoot) return; drawing = true; drawT = 0; SFX.draw(); $('power').style.display = 'block'; if (fpArrowNock) fpRig.remove(fpArrowNock); fpArrowNock = makeArrowMesh(0.5); fpArrowNock.position.set(0.1, -0.02, -0.25); fpArrowNock.rotation.y = Math.PI / 2; fpBow.add(fpArrowNock); }
+  let drawing = false, drawT = 0, canShoot = true, bossCheat = false;
+  const activeBowIdx = () => bossCheat ? 5 : S.equipped;
+  function startDraw() {
+    if (state !== 'play' || paused || (P.zone !== 'range' && P.zone !== 'boss') || !canShoot) return;
+    if (!bossMode && LV.over) return;
+    if (!bossMode && LV.arrows <= 0) { tip('Brak strzał. Poczekaj, aż ostatnie strzały dolecą.'); return; }
+    drawing = true; drawT = 0; SFX.draw(); $('power').style.display = 'block'; if (fpArrowNock) fpRig.remove(fpArrowNock); fpArrowNock = makeArrowMesh(0.5); fpArrowNock.position.set(0.1, -0.02, -0.25); fpArrowNock.rotation.y = Math.PI / 2; fpBow.add(fpArrowNock); }
   function releaseDraw() {
     if (!drawing) return; drawing = false; $('power').style.display = 'none';
-    const bow = BOWS[S.equipped], power = clamp(drawT / bow.draw, 0.22, 1);
+    const bow = BOWS[activeBowIdx()], power = clamp(drawT / bow.draw, 0.22, 1);
     if (fpArrowNock) { fpBow.remove(fpArrowNock); fpArrowNock = null; }
+    hideTraj();
+    if (!bossMode) { LV.arrows = Math.max(0, LV.arrows - 1); updLevelHud(); }
     fireArrow(power, bow); canShoot = false; setTimeout(() => canShoot = true, 120);
   }
   const arrows = [];
-  function fireArrow(power, bow) {
+  function launchParams(power, bow) {
     const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
     const origin = new THREE.Vector3(); fpBow.getWorldPosition(origin); origin.addScaledVector(dir, 0.15);
-    const speed = bow.speed * (0.55 + 0.45 * power);
+    return { dir, origin, speed: bow.speed * (0.55 + 0.45 * power) };
+  }
+  // dotted trajectory preview (aim helper, can be switched off with the target button)
+  const trajDots = []; for (let i = 0; i < 26; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, fog: false })); m.visible = false; scene.add(m); trajDots.push(m); }
+  function hideTraj() { trajDots.forEach(d => d.visible = false); }
+  function updateTraj() {
+    if (!drawing || !S.aim || !fpBow) { hideTraj(); return; }
+    const bow = BOWS[activeBowIdx()], power = clamp(drawT / bow.draw, 0.22, 1), lp = launchParams(power, bow);
+    const pos = lp.origin.clone(), vel = lp.dir.clone().multiplyScalar(lp.speed), stepT = 0.07; let n = 0;
+    for (let i = 0; i < trajDots.length; i++) {
+      for (let k = 0; k < 2; k++) { vel.y -= G * stepT / 2; pos.addScaledVector(vel, stepT / 2); }
+      if (pos.y < 0.05) break;
+      const d = trajDots[i]; d.visible = true; d.position.copy(pos); const dist = Math.hypot(pos.x - lp.origin.x, pos.z - lp.origin.z); d.scale.setScalar(0.6 + dist * 0.035); d.material.opacity = Math.max(0.2, 0.85 - i * 0.025); n++;
+    }
+    for (let i = n; i < trajDots.length; i++) trajDots[i].visible = false;
+  }
+  function fireArrow(power, bow) {
+    const lp = launchParams(power, bow), dir = lp.dir, origin = lp.origin, speed = lp.speed;
     const mesh = makeArrowMesh(1); scene.add(mesh); mesh.position.copy(origin);
     mesh.lookAt(origin.clone().add(dir));
     arrows.push({ mesh, pos: origin.clone(), vel: dir.clone().multiplyScalar(speed), bow, life: 4, stuck: false });
@@ -482,11 +552,16 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
       a.life -= dt; let dead = a.life <= 0, hit = null;
       const steps = 4;
       for (let s = 0; s < steps && !dead && !hit; s++) {
-        a.vel.y -= 13 * dt / steps; a.pos.addScaledVector(a.vel, dt / steps);
+        const prev = a.pos.clone();
+        a.vel.y -= G * dt / steps; a.pos.addScaledVector(a.vel, dt / steps);
         if (a.pos.y < 0.02) { dead = true; break; }
         for (const t of targets) {
-          const local = a.pos.clone().sub(new THREE.Vector3(t.g.position.x, t.g.position.y, t.g.position.z));
-          if (Math.abs(local.z) < 0.22) { const pd = Math.hypot(local.x, local.y); if (pd <= t.radius) { hit = { t, local, pd }; break; } }
+          if (t.down) continue;
+          const tp = t.g.position, lp = { x: prev.x - tp.x, y: prev.y - tp.y, z: prev.z - tp.z }, ln = { x: a.pos.x - tp.x, y: a.pos.y - tp.y, z: a.pos.z - tp.z };
+          let local = null;
+          if (lp.z > 0.05 && ln.z <= 0.05) { const k = clamp(lp.z / (lp.z - ln.z), 0, 1); local = { x: lp.x + (ln.x - lp.x) * k, y: lp.y + (ln.y - lp.y) * k }; }
+          else if (Math.abs(ln.z) < 0.22) local = { x: ln.x, y: ln.y };
+          if (local) { const pd = Math.hypot(local.x, local.y); if (pd <= t.radius) { hit = { t, local, pd }; break; } }
         }
         if (!hit) for (const s2 of solids) { if (s2.tag === 'tree' || s2.tag === 'wall') { if (a.pos.x > s2.x0 - 0.3 && a.pos.x < s2.x1 + 0.3 && a.pos.z > s2.z0 - 0.3 && a.pos.z < s2.z1 + 0.3 && a.pos.y < 3.2) { dead = true; break; } } }
         if (!hit && boss && boss.alive) { const dx = a.pos.x - boss.x, dz = a.pos.z - boss.z, dy = a.pos.y - boss.hitY; if (Math.hypot(dx, dy, dz) < boss.hitR) { hit = { boss: true }; break; } }
@@ -496,26 +571,34 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
       if (hit) {
         if (hit.boss) { bossHit(a); arrows.splice(i, 1); a.mesh.parent && a.mesh.parent.remove(a.mesh); continue; }
         registerHit(a, hit.t, hit.local, hit.pd); a.stuck = true; a.life = 3;
-        const g2 = hit.t.g; a.mesh.position.copy(a.pos); g2.worldToLocal(a.mesh.position); const dir = a.vel.clone().normalize();
-        a.mesh.lookAt(a.mesh.position.clone().add(dir)); g2.attach(a.mesh); a.mesh.position.z = clamp(a.mesh.position.z, -0.3, 0.05);
-        arrows.splice(i, 1); arrows.push(a); // keep for fade timer but physics loop will see stuck=true and skip
+        const g2 = hit.t.g, dir = a.vel.clone().normalize();
+        a.mesh.position.copy(a.pos); a.mesh.lookAt(a.pos.clone().add(dir)); g2.attach(a.mesh); // attach() keeps the world transform
+        a.mesh.position.z = 0.2; // tip embedded in the face
+        arrows.splice(i, 1); arrows.push(a); // keep for the fade timer; physics loop skips stuck arrows
       } else if (dead) { if (a.mesh.parent) a.mesh.parent.remove(a.mesh); arrows.splice(i, 1); }
     }
   }
   function ringAt(pd, radius) { const f = pd / radius; for (const r of RINGS) if (f <= r.r) return r; return RINGS[RINGS.length - 1]; }
   function registerHit(a, t, local, pd) {
     const ring = ringAt(pd, t.radius), bow = a.bow || BOWS[S.equipped];
-    const val = Math.round(ring.val * bow.mul);
+    const payMul = S.done[LV.i] ? 0.5 : 1;
+    const val = Math.round(ring.val * bow.mul * (t.swing ? 1.5 : 1) * payMul);
     earn(val); SFX.coin();
+    if (!t.down) { t.down = true; t.fallT = 0; LV.left = Math.max(0, LV.left - 1); updLevelHud(); }
     if (ring.name === 'złoto') SFX.hitGold(); else SFX.hitRing();
     const wp = new THREE.Vector3(t.g.position.x + local.x, t.g.position.y + local.y, t.g.position.z + 0.1);
-    popText(wp.x, wp.y + 0.3, wp.z, '+' + val, ring.name === 'złoto' ? '#FFD400' : '#ffffff');
+    popText(wp.x, wp.y + 0.3, wp.z, (ring.name === 'złoto' ? 'ZŁOTO +' : '+') + val, ring.name === 'złoto' ? '#FFD400' : '#ffffff');
     burst(wp.x, wp.y, wp.z, ring.color, 10, 2.4);
     $('cross').classList.add('hit'); setTimeout(() => $('cross').classList.remove('hit'), 120);
   }
 
   // ================= TARGET SWING =================
-  function updateTargets(dt, T) { for (const t of targets) if (t.swing) t.g.position.x = t.x + Math.sin(T * 0.9 + t.phase) * 3.2; }
+  function updateTargets(dt, T) {
+    for (const t of targets) {
+      if (t.down) { t.fallT += dt; t.g.rotation.x = -Math.min(1, t.fallT / 0.45) * 1.45; if (t.fallT > 1.3) t.g.visible = false; continue; }
+      if (t.swing) t.g.position.x = t.x + Math.sin(T * 0.55 + t.phase) * t.swing;
+    }
+  }
 
   // ================= SHOP =================
   function renderShop() {
@@ -539,7 +622,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     { id: 2, name: 'Czerwony Smok', icon: '🐉', hp: 320, speed: 2.8, reward: 8000, color: 0xd8432a, bodyScale: 1.3 }
   ];
   const BOSS_ARENA = { x: 0, z: -230, r: 24 };
-  let boss = null, bossBullets = [], bossMode = false;
+  let boss = null, bossBullets = [], bossMode = false, lastBossIdx = 0;
   function buildBossArena() {
     const g = new THREE.Group(); g.position.set(BOSS_ARENA.x, 0, BOSS_ARENA.z); scene.add(g);
     const floor = new THREE.Mesh(new THREE.CircleGeometry(BOSS_ARENA.r, 32), STD(0x6a5a4a, { map: concreteTex })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; g.add(floor);
@@ -561,13 +644,14 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     return g;
   }
   function startBoss(idx) {
+    lastBossIdx = idx; paused = false; drawing = false; hideTraj(); $('power').style.display = 'none';
     const def = BOSS_DEFS[idx]; const mesh = makeBossMesh(def); mesh.position.set(BOSS_ARENA.x, 0, BOSS_ARENA.z - 10); scene.add(mesh);
     boss = { def, mesh, x: mesh.position.x, z: mesh.position.z, hp: def.hp, maxHp: def.hp, alive: true, t: 0,
       fireT: rnd(2.2, 3), windup: 0, mode: 'circle', lungeT: rnd(5, 7.5), lungeDirX: 0, lungeDirZ: 0,
       hitY: 1.6 * def.bodyScale, hitR: 1.1 * def.bodyScale, hurtT: 0, flashT: 0 };
     $('bossHpBox').style.display = 'block'; $('bossName').textContent = def.icon + ' ' + def.name; updBossHp();
     P.x = BOSS_ARENA.x; P.z = BOSS_ARENA.z + BOSS_ARENA.r - 3; P.yaw = 0; P.zone = 'boss'; bossMode = true;
-    P.hearts = 3; updHearts(); $('hearts').style.display = 'flex';
+    P.hearts = 3; P.hurtT = 0; updHearts(); $('hearts').style.display = 'flex'; updLevelHud();
     bossBullets.forEach(b => scene.remove(b.mesh)); bossBullets = [];
     arenaFlash();
     banner(def.icon + ' ' + def.name, 'Trafiaj w świecący rdzeń! Uważaj na szarże i strzały.', 2800); SFX.roar();
@@ -592,12 +676,12 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     [0xFF4F8B, 0xFFC93C, 0x3DDC84, 0x4F9DFF, 0xC56BFF].forEach(c => burst(boss.x, boss.hitY + 1, boss.z, c, 16, 6));
     bossBullets.forEach(bu => scene.remove(bu.mesh)); bossBullets = [];
     SFX.win();
-    $('rT').textContent = 'Zwycięstwo!'; $('rS').textContent = 'Pokonałeś: ' + def.name + '. Nagroda: ' + fmtM(def.reward) + '.'; $('result').classList.remove('hide');
+    $('rT').textContent = 'Zwycięstwo!'; $('rS').textContent = 'Pokonałeś: ' + def.name + '. Nagroda: ' + fmtM(def.reward) + '.'; $('result').classList.remove('hide'); paused = true; drawing = false; hideTraj(); $('power').style.display = 'none';
     boss = null; bossMode = false; $('bossHpBox').style.display = 'none';
   }
   function bossFailed() {
     $('rT').textContent = 'Porażka'; $('rS').textContent = boss ? ('Pokonał cię: ' + boss.def.name + '. Spróbuj ponownie, lepiej się uchylaj przed szarżami i pociskami.') : '';
-    $('result').classList.remove('hide'); if (boss) scene.remove(boss.mesh); bossBullets.forEach(bu => scene.remove(bu.mesh)); bossBullets = []; boss = null; bossMode = false; $('bossHpBox').style.display = 'none';
+    $('result').classList.remove('hide'); paused = true; drawing = false; hideTraj(); $('power').style.display = 'none'; if (boss) scene.remove(boss.mesh); bossBullets.forEach(bu => scene.remove(bu.mesh)); bossBullets = []; boss = null; bossMode = false; $('bossHpBox').style.display = 'none';
   }
   function bossStep(dt, T) {
     if (!boss) return;
@@ -654,14 +738,55 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 
   // ================= INTERACT =================
   function nearestZone() {
-    const dShop = Math.hypot(P.x - SHOP.x, P.z - SHOP.z), dPortal = Math.hypot(P.x - PORTAL.x, P.z - PORTAL.z);
-    if (dShop < 2.6) return 'shop'; if (dPortal < 2.6) return 'portal'; return null;
+    const dShop = Math.hypot(P.x - SHOP.x, P.z - SHOP.z), dPortal = Math.hypot(P.x - PORTAL.x, P.z - PORTAL.z), dBoard = Math.hypot(P.x - BOARD.x, P.z - (BOARD.z - 0.4));
+    if (dShop < 2.6) return 'shop'; if (dPortal < 2.6) return 'portal'; if (dBoard < 2.6) return 'board'; return null;
   }
   function onInteract() {
-    if (state !== 'play' || paused) return;
+    if (state !== 'play') return;
+    if (!$('shop').classList.contains('hide')) { closeShop(); return; }
+    if (!$('board').classList.contains('hide')) { closeBoard(); return; }
+    if (paused || bossMode) return;
     const z = nearestZone();
-    if (z === 'shop') { openShop(); }
+    if (z === 'shop') openShop();
+    else if (z === 'board') openBoard();
     else if (z === 'portal') { if (allBowsOwned()) openBossSelect(); else { tip('Kup najpierw wszystkie 5 łuków'); SFX.no(); } }
+  }
+  function openBoard() { renderBoard(); $('board').classList.remove('hide'); paused = true; drawing = false; if (document.pointerLockElement) document.exitPointerLock(); }
+  function closeBoard() { $('board').classList.add('hide'); paused = false; }
+  function renderBoard() {
+    $('boardlist').innerHTML = '';
+    LEVELS.forEach((lv, i) => {
+      const unlocked = i <= S.unlocked, done = S.done[i], maxZ = Math.round(Math.max.apply(null, lv.targets.map(t => -t.z)));
+      const row = document.createElement('div'); row.className = 'bowrow';
+      row.innerHTML = `<div class="ic" style="background:${done ? '#E8FBEF' : unlocked ? '#EEF6FF' : '#F2F2F2'}">${done ? '✅' : unlocked ? '🎯' : '🔒'}</div><div class="tx"><b>Poziom ${i + 1}</b><small>${lv.targets.length} tarcz · do ${maxZ} m · ${lv.arrows} strzał${lv.targets.some(t => t.swing) ? ' · ruchome cele' : ''}</small></div>`;
+      const btn = document.createElement('button'); btn.textContent = i === LV.i ? 'Od nowa' : 'Graj'; btn.disabled = !unlocked;
+      btn.onclick = () => { closeBoard(); buildLevel(i); banner('Poziom ' + (i + 1), 'Zbij wszystkie tarcze', 1800); SFX.click(); };
+      row.appendChild(btn); $('boardlist').appendChild(row);
+    });
+  }
+  // ---- level flow ----
+  function updLevelHud() {
+    $('lvlPill').textContent = 'Poziom ' + (LV.i + 1) + '/' + LEVELS.length;
+    $('arrowPill').textContent = '🏹 ' + LV.arrows + ' · 🎯 ' + (LV.total - LV.left) + '/' + LV.total;
+    $('lvlPill').style.display = $('arrowPill').style.display = bossMode ? 'none' : '';
+  }
+  function completeLevel() {
+    const i = LV.i, first = !S.done[i], payMul = first ? 1 : 0.5;
+    const bonus = Math.round((50 + (i + 1) * 45 + LV.arrows * 4) * payMul);
+    earn(bonus); S.done[i] = true; if (i + 1 < LEVELS.length) S.unlocked = Math.max(S.unlocked, i + 1); save(); updCash();
+    SFX.win(); [0xFFC93C, 0x3DDC84, 0x4F9DFF, 0xFF4F8B].forEach(c => burst(P.x, 2.2, P.z - 3, c, 14, 5));
+    const last = i + 1 >= LEVELS.length;
+    banner(last ? 'Wszystkie poziomy ukończone!' : 'Poziom ' + (i + 1) + ' ukończony!', '+' + fmtM(bonus) + (first ? '' : ' (powtórka 50%)'), 2500);
+    setTimeout(() => { if (!bossMode && LV.over && LV.i === i) { buildLevel(last ? i : i + 1); tip(last ? 'Możesz powtarzać poziomy z tablicy w bunkrze albo kupić łuki i iść do bossa.' : 'Kolejny poziom: tarcze są dalej i mniejsze.'); } }, 2700);
+  }
+  function failLevel() {
+    SFX.ko(); banner('Brak strzał!', 'Poziom ' + (LV.i + 1) + ' od nowa, bez kar', 2200);
+    const i = LV.i; setTimeout(() => { if (!bossMode && LV.over && LV.i === i) buildLevel(i); }, 2300);
+  }
+  function levelCheck(dt) {
+    if (bossMode || LV.over) return;
+    if (LV.left <= 0) { LV.over = true; completeLevel(); return; }
+    if (LV.arrows <= 0 && !arrows.some(a => !a.stuck) && !drawing) { LV.failT += dt; if (LV.failT > 0.6) { LV.over = true; failLevel(); } } else LV.failT = 0;
   }
   function openShop() { renderShop(); $('shop').classList.remove('hide'); paused = true; if (document.pointerLockElement) document.exitPointerLock(); }
   function closeShop() { $('shop').classList.add('hide'); paused = false; }
@@ -670,13 +795,14 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     $('bosslist').querySelectorAll('.bossrow').forEach(btn => btn.onclick = () => { const i = +btn.dataset.b; $('bossSelect').classList.add('hide'); paused = false; startBoss(i); });
     $('bossSelect').classList.remove('hide'); paused = true; if (document.pointerLockElement) document.exitPointerLock();
   }
-  function closeBossSelect() { $('bossSelect').classList.add('hide'); paused = false; }
+  function endCheat() { if (!bossCheat) return; bossCheat = false; setFpBow(S.equipped); setAvatarBow(S.equipped); updBowPill(); }
+  function closeBossSelect() { $('bossSelect').classList.add('hide'); paused = false; if (!bossMode) endCheat(); }
 
   // ================= HUD HELPERS =================
   let bannerT = null; function banner(t, s, ms) { $('bT').textContent = t; $('bS').textContent = s || ''; $('bS').style.display = s ? 'inline-block' : 'none'; $('banner').classList.add('show'); clearTimeout(bannerT); bannerT = setTimeout(() => $('banner').classList.remove('show'), ms || 1800); }
   let tipT = null; function tip(t) { $('tip').textContent = t; $('tip').style.opacity = 1; clearTimeout(tipT); tipT = setTimeout(() => $('tip').style.opacity = 0, 2200); }
   let shownCash = 0; function updCash() { $('cashT').textContent = fmtM(S.cash); }
-  function updBowPill() { $('bowPill').textContent = 'Łuk: ' + BOWS[S.equipped].name; }
+  function updBowPill() { $('bowPill').textContent = 'Łuk: ' + BOWS[activeBowIdx()].name + (bossCheat ? ' (kod)' : ''); }
 
   // ================= STEP / CAMERA =================
   let state = 'menu', paused = false, teleportZ = null, hurtFlashT = 0;
@@ -696,12 +822,12 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const targetCamT = P.zone === 'bunker' ? 0 : 1; P.camT += (targetCamT - P.camT) * clamp(dt * 3.2, 0, 1);
     P.hurtT = Math.max(0, P.hurtT - dt);
     hurtFlashT = Math.max(0, hurtFlashT - dt * 2.4); $('hurtFlash').style.opacity = hurtFlashT > 0 ? Math.min(1, hurtFlashT * 2) : 0;
-    if (drawing) { drawT += dt; const bow = BOWS[S.equipped]; $('powerI').style.width = Math.min(100, drawT / bow.draw * 100) + '%'; if (fpArrowNock) fpArrowNock.visible = true; }
-    updateTargets(dt, T); arrowStep(dt); if (bossMode) bossStep(dt, T);
+    if (drawing) { drawT += dt; const bow = BOWS[activeBowIdx()]; $('powerI').style.width = Math.min(100, drawT / bow.draw * 100) + '%'; if (fpArrowNock) fpArrowNock.visible = true; }
+    updateTargets(dt, T); arrowStep(dt); if (bossMode) bossStep(dt, T); else levelCheck(dt); updateTraj();
     for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.life -= dt; p.vy -= 10 * dt; p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.material.opacity = Math.max(0, p.life * 2); p.m.material.transparent = true; if (p.life <= 0) { scene.remove(p.m); parts.splice(i, 1); } }
     for (let i = floats.length - 1; i >= 0; i--) { const f2 = floats[i]; f2.life -= dt; f2.s.position.y += f2.vy * dt; f2.s.material.opacity = Math.min(1, f2.life * 1.6); if (f2.life <= 0) { scene.remove(f2.s); f2.s.material.map.dispose(); f2.s.material.dispose(); floats.splice(i, 1); } }
     const z = nearestZone();
-    if (!bossMode && z && P.zone === 'bunker') { $('interact').style.display = 'block'; $('interact').textContent = z === 'shop' ? (isTouch ? 'Wejdź: sklep z łukami' : 'E: sklep z łukami') : (allBowsOwned() ? (isTouch ? 'Wejdź: wybierz bossa' : 'E: wybierz bossa') : (isTouch ? 'Zablokowane: kup wszystkie łuki' : 'Zablokowane: kup wszystkie łuki')); $('intBtn').style.display = isTouch ? 'block' : 'none'; }
+    if (!bossMode && z && P.zone === 'bunker') { $('interact').style.display = 'block'; $('interact').textContent = z === 'shop' ? (isTouch ? 'Wejdź: sklep z łukami' : 'E: sklep z łukami') : z === 'board' ? (isTouch ? 'Wejdź: wybór poziomu' : 'E: wybór poziomu') : (allBowsOwned() ? (isTouch ? 'Wejdź: wybierz bossa' : 'E: wybierz bossa') : (isTouch ? 'Zablokowane: kup wszystkie łuki' : 'Zablokowane: kup wszystkie łuki')); $('intBtn').style.display = isTouch ? 'block' : 'none'; }
     else { $('interact').style.display = 'none'; $('intBtn').style.display = 'none'; }
     updCash();
   }
@@ -713,7 +839,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     avatar.visible = P.camT < 0.98;
     recoilT = Math.max(0, recoilT - dt * 5);
     fpRig.position.set(0, -recoilT * 0.05, recoilT * 0.08);
-    if (fpBow) { const bow = BOWS[S.equipped]; const pull = drawing ? Math.min(1, drawT / bow.draw) : 0; fpBow.position.copy(fpBowBase); fpBow.position.z += pull * 0.08; const str = fpBow.getObjectByName('string'); if (str) str.position.x = 0.1 - pull * 0.12; if (fpArrowNock) fpArrowNock.position.set(0.1 - pull * 0.12, -0.02, -0.25); }
+    if (fpBow) { const bow = BOWS[activeBowIdx()]; const pull = drawing ? Math.min(1, drawT / bow.draw) : 0; fpBow.position.copy(fpBowBase); fpBow.position.z += pull * 0.08; const str = fpBow.getObjectByName('string'); if (str) str.position.x = 0.1 - pull * 0.12; if (fpArrowNock) fpArrowNock.position.set(0.1 - pull * 0.12, -0.02, -0.25); }
     // camera blend: third person orbit (bunker) <-> first person (range/boss)
     const eyeY = 1.62;
     const camDist = 4.2, camH = 1.1;
@@ -723,7 +849,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     camera.position.set(cx, cy, cz);
     if (P.camT > 0.5) { camera.rotation.set(P.pitch, P.yaw, 0); }
     else { const lx = P.x, ly = eyeY, lz = P.z; camera.lookAt(lx, ly, lz); }
-    camera.fov = 68 + (drawing ? -4 * Math.min(1, drawT / BOWS[S.equipped].draw) : 0); camera.updateProjectionMatrix();
+    camera.fov = 68 + (drawing ? -4 * Math.min(1, drawT / BOWS[activeBowIdx()].draw) : 0); camera.updateProjectionMatrix();
     $('cross').style.display = P.camT > 0.7 ? 'block' : 'none';
     sun.position.set(P.x + 25, 45, P.z + 15); sun.target.position.set(P.x, 0, P.z);
     renderer.render(scene, camera);
@@ -733,22 +859,33 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   let T = 0;
   function startGame() {
     state = 'play'; paused = false; $('menu').classList.add('hide');
-    setFpBow(S.equipped); setAvatarBow(S.equipped); updBowPill(); updCash(); setPortalUnlocked(allBowsOwned());
+    setFpBow(activeBowIdx()); setAvatarBow(activeBowIdx()); updBowPill(); updCash(); setPortalUnlocked(allBowsOwned()); updLevelHud();
     P.x = BUNK.x; P.z = BUNK.z; P.yaw = 0; P.pitch = 0; P.camT = 0;
-    tip(isTouch ? 'Wyjdź z bunkra. Joystick: ruch, przeciągnij: rozglądanie, Strzel: naciągnij i puść.' : 'Kliknij, żeby rozejrzeć się myszką. WASD: ruch, trzymaj LPM: naciągnij łuk, puść: strzał, E: wejście.');
+    tip(isTouch ? 'Wyjdź z bunkra na strzelnicę. Zbij wszystkie tarcze, zanim skończą się strzały.' : 'Kliknij, żeby rozejrzeć się myszką. WASD: ruch, trzymaj LPM: naciągnij łuk, puść: strzał, E: sklep i poziomy.');
   }
-  function togglePause() { if (state !== 'play') return; if ($('shop').classList.contains('hide') === false || $('bossSelect').classList.contains('hide') === false) return; if (!$('pause').classList.contains('hide')) { $('pause').classList.add('hide'); paused = false; } else if ($('result').classList.contains('hide')) { $('pause').classList.remove('hide'); paused = true; drawing = false; $('power').style.display = 'none'; if (document.pointerLockElement) document.exitPointerLock(); } }
+  function togglePause() { if (state !== 'play') return; if ($('shop').classList.contains('hide') === false || $('board').classList.contains('hide') === false || $('bossSelect').classList.contains('hide') === false) return; if (!$('pause').classList.contains('hide')) { $('pause').classList.add('hide'); paused = false; } else if ($('result').classList.contains('hide')) { $('pause').classList.remove('hide'); paused = true; drawing = false; $('power').style.display = 'none'; if (document.pointerLockElement) document.exitPointerLock(); } }
   function toggleSound() { muted = !muted; $('soundBtn').textContent = muted ? '🔇' : '🔊'; }
   $('startBtn').addEventListener('click', () => { ac(); startGame(); });
   $('newBtn').addEventListener('click', () => { if (confirm('Na pewno skasować cały postęp?')) { try { localStorage.removeItem(SAVE); } catch (e) {} location.reload(); } });
   $('pauseBtn').addEventListener('click', togglePause); $('resumeBtn').addEventListener('click', togglePause);
   $('menuBtn').addEventListener('click', () => { $('pause').classList.add('hide'); paused = false; state = 'menu'; $('menu').classList.remove('hide'); if (document.pointerLockElement) document.exitPointerLock(); });
   $('soundBtn').addEventListener('click', toggleSound);
-  $('shopClose').addEventListener('click', closeShop); $('bossClose').addEventListener('click', closeBossSelect);
-  $('backBtn').addEventListener('click', () => { $('result').classList.add('hide'); P.x = BUNK.x; P.z = BUNK.z + 3; P.yaw = 0; });
-  $('againBtn').addEventListener('click', () => { const idx = boss ? boss.def.id : lastBossIdx; $('result').classList.add('hide'); startBoss(idx); });
-  let lastBossIdx = 0;
-  const _startBoss = startBoss; startBoss = function (i) { lastBossIdx = i; _startBoss(i); };
+  $('shopClose').addEventListener('click', closeShop); $('bossClose').addEventListener('click', closeBossSelect); $('boardClose').addEventListener('click', closeBoard);
+  $('aimBtn').style.opacity = S.aim ? 1 : 0.4;
+  $('aimBtn').addEventListener('click', () => { S.aim = !S.aim; save(); $('aimBtn').style.opacity = S.aim ? 1 : 0.4; if (!S.aim) hideTraj(); });
+  function tryCode() {
+    const v = $('codeIn').value.trim(), msg = $('codeMsg'); $('codeIn').value = '';
+    if (v === '5421') {
+      msg.style.color = '#1f9e5a'; msg.textContent = 'Kod przyjęty: wybierz bossa'; ac(); SFX.buy();
+      if (state !== 'play') startGame();
+      bossCheat = true; setFpBow(5); setAvatarBow(5); updBowPill(); openBossSelect();
+    } else { msg.style.color = '#d6336c'; msg.textContent = v ? 'Zły kod' : 'Wpisz kod'; SFX.no(); }
+  }
+  $('codeBtn').addEventListener('click', tryCode);
+  $('codeIn').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') tryCode(); });
+  $('codeIn').addEventListener('keyup', e => e.stopPropagation());
+  $('backBtn').addEventListener('click', () => { $('result').classList.add('hide'); endCheat(); bossMode = false; P.x = BUNK.x; P.z = BUNK.z + 3; P.yaw = 0; P.pitch = 0; P.vx = P.vz = 0; paused = false; $('hearts').style.display = 'none'; updLevelHud(); });
+  $('againBtn').addEventListener('click', () => { $('result').classList.add('hide'); startBoss(lastBossIdx); });
   document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play' && !paused) togglePause(); });
   if (hasSave) { $('newBtn').style.display = ''; $('startBtn').textContent = 'Graj dalej (' + fmtM(S.cash) + ')'; }
   $('hint').textContent = isTouch ? 'Joystick rusza, przeciągnięcie palcem rozgląda się, Strzel naciąga i strzela.' : 'WASD + mysz, trzymaj LPM żeby naciągnąć łuk, E żeby wejść do sklepu/portalu.';
@@ -761,10 +898,12 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     requestAnimationFrame(frame);
   }
   setFpBow(0); setAvatarBow(0);
+  buildLevel(clamp(S.unlocked || 0, 0, LEVELS.length - 1));
   requestAnimationFrame(frame);
   globalThis.__bs = {
     ringAt, fmtM, collide, BOWS, get S(){return S;}, save, earn, allBowsOwned,
     get P(){return P;}, step, targets, arrows, fireArrow, arrowStep, registerHit,
+    LEVELS, LV, buildLevel, completeLevel, failLevel, levelCheck, renderBoard, openBoard, closeBoard, tryCode, makeArrowMesh, activeBowIdx, G, updateTraj, hideTraj, trajDots, updateTargets, startDraw, releaseDraw, get bossCheat(){return bossCheat;}, get drawing(){return drawing;}, set drawing(v){drawing=v;},
     renderShop, openShop, closeShop, checkAllBows, BOSS_DEFS, startBoss, boss: ()=>boss, bossHit, bossStep,
     nearestZone, onInteract, SHOP, PORTAL, BUNK, inBunker, visuals, camera, fpRig, fpBowBase, get fpBow(){return fpBow;},
     get state(){return state;}, set state(v){state=v;}, get paused(){return paused;}, set paused(v){paused=v;}
