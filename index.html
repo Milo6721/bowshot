@@ -1556,7 +1556,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     { id: 'r4', name: 'Zuza Iskra', icon: '⚡', pts: 820, hp: 170, speed: 5.6, reward: 850, shirt: 0xffc93c, pants: 0x3a2a5a, skin: 0xffd9a0, hat: 'band', cape: 0x9b6bff, bowIdx: 9, fire: [1.4, 2.1], arrowSpeed: 52, multi2: 2, scale: 1.0, aimErr: 0.75 },
     { id: 'r5', name: 'Kuba Cień', icon: '🥷', pts: 1050, hp: 190, speed: 6.0, reward: 1150, shirt: 0x22262e, pants: 0x14161b, skin: 0xe8b98a, hat: 'hood', cape: 0x101216, bowIdx: 10, fire: [1.3, 1.9], arrowSpeed: 55, multi2: 3, scale: 1.05, aimErr: 0.6 },
     { id: 'r6', name: 'Maja Złota', icon: '👑', pts: 1300, hp: 210, speed: 5.8, reward: 1500, shirt: 0xc41428, pants: 0x2b1a3a, skin: 0xffd34d, hat: 'crown', cape: 0xffc93c, bowIdx: 11, fire: [1.15, 1.7], arrowSpeed: 58, multi2: 3, scale: 1.05, aimErr: 0.45 },
-    { id: 'r7', name: 'Mistrz Ignacy', icon: '🧙', pts: 1600, hp: 240, speed: 6.2, reward: 2200, shirt: 0x6a2aff, pants: 0x1a0a3a, skin: 0xffd9a0, hat: 'wizard', cape: 0x3a1a8a, bowIdx: 14, fire: [1.0, 1.5], arrowSpeed: 62, multi2: 3, scale: 1.1, aimErr: 0.35 }
+    { id: 'r7', name: 'Mistrz Ignacy', icon: '🧙', pts: 1600, hp: 240 * 6, invincible: true, salvo: 10, speed: 6.2, reward: 2200, shirt: 0x6a2aff, pants: 0x1a0a3a, skin: 0xffd9a0, hat: 'wizard', cape: 0x3a1a8a, bowIdx: 14, fire: [1.0, 1.5], arrowSpeed: 62, multi2: 3, scale: 1.1, aimErr: 0.35 }
   ];
   const RANKS = [[0, '🥉 Brąz'], [300, '🥈 Srebro'], [600, '🥇 Złoto'], [1000, '💎 Diament'], [1400, '🏆 Mistrz']];
   function rankName(p) { let n = RANKS[0][1]; for (const [t, nm] of RANKS) if (p >= t) n = nm; return n; }
@@ -1606,7 +1606,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     u.flashMats = mats.map(m => ({ m, e: m.emissive.getHex ? m.emissive.getHex() : 0, i: m.emissiveIntensity || 0 }));
     const b = bowModels[def.bowIdx].clone(); b.scale.setScalar(1.25); b.position.set(0, -0.68, 0.05); b.rotation.set(Math.PI / 2, Math.PI / 2, 0); u.arms[1].add(b);
     u.glint = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0 })); u.glint.position.set(0, 1.5, 0.8); g.add(u.glint);
-    const tag = textSprite(def.icon + ' ' + def.name, '#ffffff', 44, 'rgba(196,20,40,.92)'); tag.position.set(0, 2.85, 0); tag.scale.multiplyScalar(0.62); g.add(tag);
+    const tag = textSprite(def.invincible ? '🔥 NIEPOKONANY · ' + def.name : def.icon + ' ' + def.name, '#ffffff', 44, def.invincible ? 'rgba(106,42,255,.95)' : 'rgba(196,20,40,.92)'); tag.position.set(0, 2.85, 0); tag.scale.multiplyScalar(0.62); g.add(tag);
     const sh = new THREE.Mesh(new THREE.CircleGeometry(0.6, 16), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.3, depthWrite: false })); sh.rotation.x = -Math.PI / 2; sh.position.y = 0.04; g.add(sh); u.shadow = sh;
     g.rotation.order = 'YXZ'; g.scale.setScalar(def.scale);
     return g;
@@ -1623,11 +1623,12 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const bx = BOSS_ARENA.x, bz = BOSS_ARENA.z - BOSS_ARENA.r + 4;
     boss = { def, mesh, x: bx, z: bz, y: 0, vy: 0, vx: 0, vz: 0, hp: def.hp, maxHp: def.hp, alive: true, dying: -1,
       strafeDir: 1, strafeT: rnd(1, 2), drawT: 0, drawDur: 0.75, fireT: rnd(1.4, 2.2), dodgeCd: 2, walk: 0, hurtT: 0, flashT: 0, burnT: 0, burnAcc: 0, phase2: false,
-      hitY: 1.2 * def.scale, hitR: 0.9 * def.scale, shots: 0, kind, slowT: 0 };
+      hitY: 1.2 * def.scale, hitR: 0.9 * def.scale, shots: 0, kind, slowT: 0,
+      seen: false, salvoWind: 0, salvoLeft: 0, salvoT: 0, salvoK: 0, salvoCd: 0, salvoGap: 0, salvoCount: 0, salvoFired: 0 };
     mesh.position.set(bx, 0, bz);
     enterArena(kind === 'rival' ? 4 : 5);
     $('bossHpBox').style.display = 'block'; $('bossName').textContent = def.icon + ' ' + def.name; updBossHp();
-    banner((kind === 'rival' ? '🏆 ' : '⚔️ ') + def.name, kind === 'rival' ? 'Pojedynek rankingowy. Trafienie w głowę = 2× obrażenia.' : 'Chowaj się za filarami. Trafienie w głowę = 2× obrażenia.', 3000); SFX.roar();
+    banner((kind === 'rival' ? '🏆 ' : '⚔️ ') + def.name, kind === 'rival' ? (def.invincible ? 'Niepokonany: ' + def.hp + ' HP i salwa ' + def.salvo + ' strzał, gdy tylko cię zobaczy. Chowaj się za filarami!' : 'Pojedynek rankingowy. Trafienie w głowę = 2× obrażenia.') : 'Chowaj się za filarami. Trafienie w głowę = 2× obrażenia.', 3000); SFX.roar();
   }
   function enterArena(maxHearts) {
     P.x = BOSS_ARENA.x; P.z = BOSS_ARENA.z + BOSS_ARENA.r - 4; P.y = 0; P.vy = 0; P.vx = P.vz = 0; P.yaw = 0; P.pitch = 0.02; P.zone = 'boss'; bossMode = true;
@@ -1795,16 +1796,16 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     fireballStep(dt); updBossArrows(dt);
   }
   function trailPuff(p, color) { const m = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({ color, transparent: true })); m.position.copy(p); m.scale.setScalar(1.5); scene.add(m); parts.push({ m, vx: 0, vy: 0.4, vz: 0, life: 0.32 }); }
-  function bossShoot() {
+  function bossShoot(forceN, fanStep, centerOff) {
     const b = boss, def = b.def, sc = def.scale, ry = b.mesh.rotation.y;
     const ox = b.x + Math.sin(ry) * 0.7 * sc, oz = b.z + Math.cos(ry) * 0.7 * sc, oy = b.y + 1.45 * sc;
     const speed = def.arrowSpeed * (b.phase2 ? 1.1 : 1);
     let tf = Math.hypot(P.x - ox, P.z - oz) / speed;
     let tx = P.x + P.vx * tf * 0.85, tz = P.z + P.vz * tf * 0.85; const ty = P.y + 1.1;
     const err = def.aimErr * (0.5 + Math.random()); tx += rnd(-err, err); tz += rnd(-err, err);
-    const n = b.phase2 ? def.multi2 : 1;
+    const n = forceN || (b.phase2 ? def.multi2 : 1);
     for (let i = 0; i < n; i++) {
-      const spread = (i - (n - 1) / 2) * 0.09, dx = tx - ox, dz = tz - oz, ca = Math.cos(spread), sa = Math.sin(spread);
+      const spread = (i - (n - 1) / 2) * (fanStep != null ? fanStep : 0.09) + (centerOff || 0), dx = tx - ox, dz = tz - oz, ca = Math.cos(spread), sa = Math.sin(spread);
       const rdx = dx * ca - dz * sa, rdz = dx * sa + dz * ca, flat = Math.hypot(rdx, rdz) || 1, t2 = flat / speed;
       const vel = new THREE.Vector3(rdx / flat * speed, (ty - oy) / t2 + 0.5 * G * t2, rdz / flat * speed);
       const mesh = makeArrowMesh(1.2); const glow = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), new THREE.MeshBasicMaterial({ color: 0xff3030 })); glow.position.z = 0.36; mesh.add(glow);
@@ -1842,12 +1843,12 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
       if (b.burnAcc >= 1) { const d = Math.floor(b.burnAcc); b.burnAcc -= d; damageBoss(d, false, true); if (!b.alive) return; }
     }
     if ((b.poisonT || 0) > 0) { b.poisonT -= dt; b.poisonAcc = (b.poisonAcc || 0) + dt * 2; if (Math.random() < dt * 10) trailPuff(new THREE.Vector3(b.x + rnd(-0.4, 0.4), b.y + rnd(0.4, 2) * sc, b.z + rnd(-0.4, 0.4)), 0x6ad84a); if (b.poisonAcc >= 1) { const d = Math.floor(b.poisonAcc); b.poisonAcc -= d; damageBoss(d, false, true); if (!b.alive) return; } }
-    b.stunT = Math.max(0, (b.stunT || 0) - dt); if (b.stunT > 0) { b.drawT = 0; b.fireT = Math.max(b.fireT, 0.3); }
+    b.stunT = Math.max(0, (b.stunT || 0) - dt); if (b.stunT > 0) { b.drawT = 0; b.salvoWind = 0; b.salvoLeft = 0; b.fireT = Math.max(b.fireT, 0.3); }
     b.slowT = Math.max(0, (b.slowT || 0) - dt); const slow = b.stunT > 0 ? 0 : b.slowT > 0 ? 0.5 : 1;
     const spd = def.speed * (b.phase2 ? 1.2 : 1) * slow;
     const dx = P.x - b.x, dz = P.z - b.z, dist = Math.hypot(dx, dz) || 1, ux = dx / dist, uz = dz / dist, px = -uz, pz = ux;
     b.strafeT -= dt; if (b.strafeT <= 0) { b.strafeDir = Math.random() < 0.5 ? -1 : 1; b.strafeT = rnd(0.8, 2.2); }
-    const want = dist > 17 ? 1 : dist < 10 ? -1 : 0, aiming = b.drawT > 0;
+    const want = dist > 17 ? 1 : dist < 10 ? -1 : 0, aiming = b.drawT > 0 || b.salvoWind > 0 || b.salvoLeft > 0;
     let mvx = ux * want + px * b.strafeDir * 0.85, mvz = uz * want + pz * b.strafeDir * 0.85; const ml = Math.hypot(mvx, mvz) || 1, mspd = aiming ? spd * 0.35 : spd;
     b.vx += (mvx / ml * mspd - b.vx) * clamp(dt * 6, 0, 1); b.vz += (mvz / ml * mspd - b.vz) * clamp(dt * 6, 0, 1);
     b.dodgeCd -= dt;
@@ -1856,15 +1857,25 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const ax = nx - BOSS_ARENA.x, az = nz - BOSS_ARENA.z, ad = Math.hypot(ax, az);
     if (ad > BOSS_ARENA.r - 1.6) { nx = BOSS_ARENA.x + ax / ad * (BOSS_ARENA.r - 1.6); nz = BOSS_ARENA.z + az / ad * (BOSS_ARENA.r - 1.6); b.strafeDir *= -1; }
     b.x = nx; b.z = nz; b.vy -= 22 * dt; b.y += b.vy * dt; if (b.y < 0) { b.y = 0; b.vy = 0; }
-    b.fireT -= dt;
-    if (b.drawT <= 0 && b.fireT <= 0) { if (hasLineOfSight(b.x, b.z, P.x, P.z)) { b.drawDur = (b.phase2 ? 0.55 : 0.75) / slow; b.drawT = b.drawDur; SFX.draw(); } else b.fireT = 0.35; }
-    if (b.drawT > 0) { b.drawT -= dt; if (b.drawT <= 0) { bossShoot(); b.fireT = rnd(def.fire[0], def.fire[1]) * (b.phase2 ? 0.8 : 1); } }
+    const seen = hasLineOfSight(b.x, b.z, P.x, P.z);
+    if (def.salvo) {
+      b.salvoCd = Math.max(0, b.salvoCd - dt); b.salvoGap = Math.max(0, b.salvoGap - dt);
+      const justSaw = seen && !b.seen;
+      if (b.salvoLeft <= 0 && b.salvoWind <= 0 && seen && b.stunT <= 0 && ((justSaw && b.salvoGap <= 0) || b.salvoCd <= 0)) { b.salvoDur = (b.phase2 ? 0.45 : 0.6) / slow; b.salvoWind = b.salvoDur; b.salvoCd = 5; b.salvoGap = 1.3; b.drawT = 0; SFX.draw(); }
+      if (b.salvoWind > 0) { b.salvoWind -= dt; if (b.salvoWind <= 0) { b.salvoLeft = def.salvo; b.salvoK = 0; b.salvoT = 0; b.salvoCount++; SFX.roar(); } }
+      if (b.salvoLeft > 0) { b.salvoT -= dt; if (b.salvoT <= 0) { bossShoot(1, 0, (b.salvoK - (def.salvo - 1) / 2) * 0.045); b.salvoFired++; b.salvoK++; b.salvoLeft--; b.salvoT = 0.085; } }
+    }
+    b.seen = seen;
+    const salvoBusy = b.salvoWind > 0 || b.salvoLeft > 0;
+    if (!salvoBusy) b.fireT -= dt;
+    if (!salvoBusy && b.drawT <= 0 && b.fireT <= 0) { if (seen) { b.drawDur = (b.phase2 ? 0.55 : 0.75) / slow; b.drawT = b.drawDur; SFX.draw(); } else b.fireT = 0.35; }
+    if (b.drawT > 0 && !salvoBusy) { b.drawT -= dt; if (b.drawT <= 0) { bossShoot(); b.fireT = rnd(def.fire[0], def.fire[1]) * (b.phase2 ? 0.8 : 1); } }
     // animation: walks, strafes, jumps and draws its bow like a player
     b.mesh.position.set(b.x, b.y, b.z); b.mesh.rotation.y = Math.atan2(dx, dz); b.mesh.rotation.x = 0;
     const sp = Math.hypot(b.vx, b.vz); if (sp > 0.3 && b.y <= 0.001) b.walk += dt * sp * 1.6;
     const sw = Math.sin(b.walk) * Math.min(1, sp / 4) * 0.85, air = b.y > 0.05;
     u.legs[0].rotation.x = air ? 0.7 : sw; u.legs[1].rotation.x = air ? -0.5 : -sw;
-    if (b.drawT > 0) { const k = 1 - b.drawT / b.drawDur; u.arms[1].rotation.x = -1.5; u.arms[0].rotation.x = -1.5 + k * 0.35; u.arms[0].rotation.z = -0.5 * k; u.glint.material.opacity = 0.3 + k * 0.65; u.glint.scale.setScalar(0.6 + k); }
+    if (b.drawT > 0 || salvoBusy) { const k = salvoBusy ? (b.salvoWind > 0 ? 1 - b.salvoWind / (b.salvoDur || 0.6) : 1) : 1 - b.drawT / b.drawDur; u.arms[1].rotation.x = -1.5; u.arms[0].rotation.x = -1.5 + k * 0.35; u.arms[0].rotation.z = -0.5 * k; u.glint.material.opacity = 0.3 + k * 0.65; u.glint.scale.setScalar(0.6 + k); }
     else { u.arms[1].rotation.x = -0.35 + sw * 0.3; u.arms[0].rotation.x = -sw * 0.6; u.arms[0].rotation.z = 0; u.glint.material.opacity = 0; }
     if (u.cape) u.cape.rotation.x = 0.12 + Math.min(0.7, sp * 0.1) + Math.sin(T * 6) * 0.05;
     if (u.shadow) { u.shadow.position.y = 0.04 - b.y / sc; u.shadow.material.opacity = 0.3 * Math.max(0.2, 1 - b.y / 3); }
@@ -1920,7 +1931,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     $('rankList').innerHTML = '';
     rows.forEach((rw, i) => {
       const row = document.createElement('div'); row.className = 'bowrow'; if (rw.me) row.style.background = '#FFF6D6';
-      row.innerHTML = `<div class="ic" style="background:#F2F2F2">${i < 3 ? ['🥇', '🥈', '🥉'][i] : rw.icon}</div><div class="tx"><b>${i + 1}. ${rw.name}</b><small>${rw.pts} pkt · ${rankName(rw.pts)}${rw.rv ? ' · nagroda ' + fmtM(rw.rv.reward) : ''}</small></div>`;
+      row.innerHTML = `<div class="ic" style="background:#F2F2F2">${i < 3 ? ['🥇', '🥈', '🥉'][i] : rw.icon}</div><div class="tx"><b>${i + 1}. ${rw.name}</b><small>${rw.pts} pkt · ${rankName(rw.pts)}${rw.rv ? ' · nagroda ' + fmtM(rw.rv.reward) : ''}${rw.rv && rw.rv.invincible ? ' · 🔥 Niepokonany: ' + rw.rv.hp + ' HP, salwa ' + rw.rv.salvo + ' strzał' : ''}</small></div>`;
       if (rw.rv) { const btn = document.createElement('button'); btn.textContent = 'Walcz'; btn.onclick = () => { closePanel('tourney'); startFight(rw.rv, 'rival'); }; row.appendChild(btn); }
       $('rankList').appendChild(row);
     });
@@ -2196,7 +2207,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     ringAt, fmtM, collide, BOWS, get S(){return S;}, save, earn, allBowsOwned,
     get P(){return P;}, step, targets, arrows, fireArrow, arrowStep, registerHit,
     killPlayer, respawn, updLives, ghostStep, ghostAt, ghostInReach, GHOSTS, spawnGhost, wolfAnger, wolfRageStep, wolfRageEnd, get wolfRage(){return wolfRage;}, get dying(){return dying;}, inCabin, updCompass, renderTrails, natureStep, playerHurt,
-    CHIM, fireBoxes, get cabinLight(){return cabinLight;}, get fireLight(){return fireLight;},
+    solids, CHIM, fireBoxes, get cabinLight(){return cabinLight;}, get fireLight(){return fireLight;},
     groundH, MOUNT, PEAKS, LAKES, CLIFF, WF, lakeAt, inWater, trailDist, cliffH, natH, SIGN, CAB, BED, sleep, applySleep, updTrophies, trophyMeshes, roofH, get sleeping(){return sleeping;},
     RIVALS, rankResult, rankName, startFight, renderTourney, SKINS, applySkin, renderWard, ARROW_TYPES, cycleArrow, craftArrows, ANIMALS, animalStep, animalHit, hurtAnimal, spawnAnimal, ENV, envStep, envApply, dayFactor, get fireballs(){return fireballs;}, dragonFire, avatar, hatGroups, get lastFight(){return lastFight;},
     BOSS_DEFS, PILLARS, bossHitTest, damageBoss, bossArrowHit, bossShoot, updBossArrows, hasLineOfSight, get bossBullets(){return bossBullets;}, renderStats, toggleView, seekSteer, get aimT(){return aimT;}, get aimHoldT(){return aimHoldT;},
