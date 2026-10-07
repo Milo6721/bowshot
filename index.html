@@ -97,6 +97,13 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 .tb{position:absolute;display:none;touch-action:none;border-radius:50%;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);font:400 15px "Lilita One";color:var(--ink);background:#fff}
 .tb.down{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
 .t-shoot{right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));width:86px;height:86px;background:var(--pink);color:#fff}
+.pill.food{pointer-events:auto;cursor:pointer;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.pill.food.low{background:rgba(170,35,35,.88);animation:foodPulse 1s ease-in-out infinite}
+@keyframes foodPulse{0%,100%{box-shadow:0 3px 0 rgba(0,0,0,.28)}50%{box-shadow:0 0 0 4px rgba(255,80,80,.55)}}
+.hbar{display:inline-block;width:60px;height:9px;border-radius:5px;background:rgba(255,255,255,.28);overflow:hidden}
+.hbar i{display:block;height:100%;background:#7fe07a}
+.pill.food.low .hbar i{background:#ffb4b4}
+@media (max-width:700px),(max-height:520px){.hbar{width:42px;height:7px}}
 #darkVig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 22%,rgba(0,0,0,.94) 100%);opacity:0;z-index:4}
 #deathScr{position:absolute;inset:0;z-index:30;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .9s}
 #deathScr.show{opacity:1;pointer-events:auto}
@@ -123,13 +130,14 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   <div class="power" id="power"><i id="powerI"></i></div>
   <div class="interact" id="interact"></div>
   <div class="hud">
-    <div class="hudcol"><div class="pill cash">💰 <b id="cashT">$0</b></div><div class="pill res" id="resPill"></div></div>
+    <div class="hudcol"><div class="pill cash">💰 <b id="cashT">$0</b></div><div class="pill res" id="resPill"></div><div class="pill food" id="foodPill" title="Dotknij, żeby zjeść (F)"></div></div>
     <div class="hudcol r">
       <div class="btnrow"><button class="ibtn" id="viewBtn" title="Widok przy strzelaniu (V)">👁️</button><button class="ibtn" id="aimBtn" title="Linia lotu strzały">🎯</button><button class="ibtn" id="soundBtn">🔊</button><button class="ibtn" id="pauseBtn">II</button></div>
       <div class="pill" id="bowPill">Łuk: Zwykły</div>
       <div class="pill" id="lvlPill">Poziom 1/10</div>
       <div class="pill" id="arrowPill">🏹 0 · 🎯 0/0</div>
       <button class="pill" id="atypePill" style="pointer-events:auto;cursor:pointer;color:#fff;font:800 14px Nunito">➶ Zwykła</button>
+      <button class="pill" id="fireBtn" style="pointer-events:auto;cursor:pointer;color:#fff;font:800 14px Nunito;display:none">🔥 Ognisko (3🪵)</button>
       <div class="pill" id="envPill">☀️</div>
       <div class="pill" id="livesPill">❤️❤️❤️</div>
       <div class="pill" id="compass" style="display:none"></div>
@@ -149,7 +157,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 
   <div class="overlay" id="menu"><div class="card">
     <h1>Bow<span>Shot</span></h1>
-    <p>Strzelnica przed bunkrem, las ze zwierzętami za bunkrem, a za furtką w lesie góry ze szczytem. Masz swój domek z łóżkiem. Craftuj łuki i strzały, walcz w turnieju, pokonaj bossów i smoka.</p>
+    <p>Strzelnica przed bunkrem, las ze zwierzętami za bunkrem, a za furtką w lesie góry ze szczytem. Masz swój domek z łóżkiem. Poluj, piecz mięso na ognisku i gotuj w kuchni, żeby nie zgłodnieć. Craftuj łuki i strzały, walcz w turnieju, pokonaj bossów i smoka.</p>
     <div class="btns"><button class="play" id="startBtn">Graj</button><button class="play alt" id="newBtn" style="display:none">Nowa gra (kasuje postęp)</button></div>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:14px"><input id="codeIn" inputmode="numeric" maxlength="8" placeholder="kod" aria-label="Kod" style="width:110px;font:400 20px 'Lilita One',sans-serif;text-align:center;border:3px solid #16213A;border-radius:12px;padding:6px;color:#16213A;letter-spacing:4px"><button class="play alt" id="codeBtn" style="min-width:0;padding:6px 16px;font-size:18px">OK</button></div>
     <p id="codeMsg" style="font-size:13px;margin:6px 0 0;min-height:18px"></p>
@@ -179,6 +187,15 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     <p id="rankInfo"></p>
     <div class="bowlist" id="rankList"></div>
     <button class="play alt" id="tourneyClose">Zamknij (E)</button>
+  </div></div>
+  <div class="overlay hide" id="kitchen"><div class="card">
+    <h2>Kuchnia</h2>
+    <p id="kitchenInfo"></p>
+    <p style="margin:0 0 6px"><b>Gotuj</b> (mięso z polowania)</p>
+    <div class="bowlist" id="kitchenList"></div>
+    <p style="margin:10px 0 6px"><b>Zjedz</b></p>
+    <div class="bowlist" id="kitchenFood"></div>
+    <button class="play alt" id="kitchenClose">Zamknij (E)</button>
   </div></div>
   <div class="overlay hide" id="trails"><div class="card">
     <h2>Szlaki górskie</h2>
@@ -251,6 +268,8 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     roar: () => { tone(80, 0.6, 'sawtooth', 0.07, -20); tone(60, 0.7, 'sine', 0.05, -10); },
     ko: () => [523, 392, 262].forEach((f, i) => setTimeout(() => tone(f, 0.3, 'sawtooth', 0.05, -40), i * 160)),
     jump: () => tone(300, 0.12, 'square', 0.03, 260),
+    eat: () => { noise(0.07, 900, 0.1, 1.0); setTimeout(() => noise(0.07, 700, 0.1, 1.0), 130); },
+    sizzle: () => noise(0.5, 3500, 0.07, 0.5),
     howl: () => { tone(260, 1.1, 'sawtooth', 0.05, 220); setTimeout(() => tone(330, 1.2, 'sine', 0.05, -160), 300); },
     wail: () => tone(520, 0.9, 'sine', 0.025, -300),
     win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.16, 'square', 0.05), i * 110))
@@ -311,6 +330,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   }
   function envApply(dt) {
     const fb = dayFactor(S.dayT || 0), f = fb * (1 - 0.92 * ENV.dark), dim = 1 - 0.35 * ENV.rainK - 0.2 * ENV.fogK, glow = f > 0 && f < 1 ? 1 - Math.abs(f - 0.5) * 2 : 0; ENV.f = f; ENV.fBase = fb;
+    cabinGlow.forEach(m => { m.emissiveIntensity = 0.3 + 1.0 * (1 - fb); });
     const dv = $('darkVig'); const dop = String(Math.round(ENV.dark * 100) / 100); if (dv.style.opacity !== dop) dv.style.opacity = dop;
     sun.intensity = (0.12 + 1.03 * f) * dim; sun.color.copy(C_SUN_DAY).lerp(C_SUN_SET, glow * 0.8);
     hemi.intensity = (0.24 + 0.38 * f) * (0.8 + 0.2 * dim); fill.intensity = 0.08 + 0.22 * f;
@@ -551,6 +571,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   const FOREST = { x0: -44, x1: 44, z0: BUNK.z + BUNK.hd + 0.6, z1: 76 };
   const MOUNT = { x0: -98, x1: 98, z0: 77, z1: 306 }, GATE_HW = 2.2;
   const CAB = { x: -32, z: 30, hw: 5.5, hd: 4.5 }, BED = { x: CAB.x - 3.4, z: CAB.z + 2.6 };
+  const KIT = { x: CAB.x + CAB.hw - 1.7, z: CAB.z + 2.5 };
   const PEAKS = [
     { id: 0, name: 'Zielona Kopa', x: -38, z: 128, h: 13, s: 15, col: 0x3ddc84, cname: 'zielony', icon: '🟢', reward: 600, trail: [[0, 80], [-8, 92], [-12, 104], [-22, 116], [-34, 126]] },
     { id: 1, name: 'Skalny Ząb', x: 40, z: 165, h: 20, s: 18, col: 0x4f9dff, cname: 'niebieski', icon: '🔵', reward: 1200, trail: [[0, 80], [10, 98], [22, 125], [32, 148], [38, 160]] },
@@ -716,7 +737,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   }
   // tool swing (axe / pickaxe) used in the forest
   let swingT = 0, swingCd = 0, swingHeld = false, swingHitDone = true;
-  function doSwing() { if (swingCd > 0) return; swingT = 0.34; swingCd = 0.42; swingHitDone = false; SFX.swing(); }
+  function doSwing() { if (swingCd > 0 || inCabin(P.x, P.z)) return; swingT = 0.34; swingCd = 0.42; swingHitDone = false; SFX.swing(); }
   function swingStep(dt) {
     swingCd = Math.max(0, swingCd - dt);
     if (swingT > 0) { swingT -= dt; if (!swingHitDone && swingT < 0.17) { swingHitDone = true; if (ghostInReach()) { killPlayer('ghost'); return; } const n = findNode(); if (n) hitNode(n); } }
@@ -827,9 +848,10 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     place('ruby', 5, 120, 300, 0.95, 1.1); place('obsidian', 5, 130, 300, 0.95, 1.1); place('iron', 5, 95, 300, 0.9, 1.1); place('gold', 4, 105, 300, 0.9, 1.0); place('stone', 12, 85, 300, 0.8, 1.2); place('pine', 34, 82, 300, 0.8, 1.25);
   })();
   // ================= YOUR CABIN (room with a bed) =================
-  const trophyMeshes = [], fireBoxes = [];
+  const trophyMeshes = [], fireBoxes = [], cabinGlow = [], kitchenFx = { t: 0, flames: [], pot: null };
   let cabinLight, fireLight;
   const CHIM = { x: CAB.x - 3.6, y: 0, z: CAB.z + 0.6 };
+  const soilM0 = (() => { let m; return () => m || (m = STD(0x5a3c24)); })();
   (function buildCabin() {
     const g = new THREE.Group(); g.position.set(CAB.x, 0, CAB.z); scene.add(g);
     const hw = CAB.hw, hd = CAB.hd, H = 3.4, t = 0.4, lowH = 0.95, doorHalf = 1.25, segL = hd - doorHalf;
@@ -837,7 +859,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const floorM = STD(0xc8a070, { map: woodTex }), darkW = STD(0x6b4a2e, { map: woodTex }), greenSh = STD(0x2f7a4a), gold = STD(0xffc93c, { metalness: 0.6, roughness: 0.3, emissive: 0x5a3a00, emissiveIntensity: 0.25 });
     const roofTex = canvasTex(32, 32, x => { x.fillStyle = '#b8472f'; x.fillRect(0, 0, 32, 32); for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) { x.fillStyle = (r + c) % 2 ? '#a63a26' : '#c4513a'; x.fillRect(c * 8 + (r % 2) * 4, r * 8, 7, 7); } x.fillStyle = 'rgba(0,0,0,.28)'; for (let r = 0; r < 4; r++) x.fillRect(0, r * 8 + 7, 32, 1); }, [9, 3]);
     const roofM = STD(0xffffff, { map: roofTex, roughness: 0.8, flatShading: true });
-    const glassM = STD(0xcfeaff, { emissive: 0xffe9b0, emissiveIntensity: 0.55, roughness: 0.1, transparent: true, opacity: 0.9 });
+    const glassM = STD(0xcfeaff, { emissive: 0xffe9b0, emissiveIntensity: 0.55, roughness: 0.1, transparent: true, opacity: 0.9 }); cabinGlow.push(glassM);
     // ---- walls: stone base + plaster, door gap on the east side ----
     const band = (w, d, x, z) => { box(g, w, lowH, d, stone, x, lowH / 2, z); box(g, w, H - lowH, d, plaster, x, lowH + (H - lowH) / 2, z); };
     band(hw * 2 + t, t, 0, hd); band(hw * 2 + t, t, 0, -hd); band(t, hd * 2, -hw, 0);
@@ -905,10 +927,36 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const bossGold = gold, silver = STD(0xdfe8f2, { metalness: 0.6, roughness: 0.3 });
     for (let i = 0; i < 4; i++) { const tg = new THREE.Group(); tg.position.set(-2.4 + i * 1.6, 2.35, sz); g.add(tg); box(tg, 0.34, 0.08, 0.34, darkW, 0, 0.04, 0); const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.09, 0.36, 12), i === 3 ? STD(0xff5a1a, { metalness: 0.6, emissive: 0x802000, emissiveIntensity: 0.4 }) : bossGold); cup.position.y = 0.3; tg.add(cup); box(tg, 0.46, 0.05, 0.06, bossGold, 0, 0.3, 0, false); tg.visible = false; trophyMeshes.push(tg); }
     PEAKS.forEach((pk, i) => { const tg = new THREE.Group(); tg.position.set(-2.4 + i * 1.6, 1.6, sz); g.add(tg); box(tg, 0.4, 0.06, 0.4, darkW, 0, 0.03, 0); const mt = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.4, 5), STD(0x8a8f99, { flatShading: true })); mt.position.y = 0.26; tg.add(mt); const sn = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.14, 5), STD(0xffffff)); sn.position.y = 0.4; tg.add(sn); box(tg, 0.03, 0.34, 0.03, STD(0xdddddd), 0.2, 0.2, 0, false); box(tg, 0.2, 0.12, 0.02, STD(pk.col), 0.3, 0.32, 0, false); tg.visible = false; trophyMeshes.push(tg); });
-    [[-0.4, 0x4f9dff, 0x3ddc84], [3.7, 0xff9a3c, 0x9b6bff]].forEach(([x, c1, c2]) => { box(g, 1.2, 0.9, 0.08, timber, x, 2.1, hd - 0.28); box(g, 1.0, 0.7, 0.04, STD(c1), x, 2.1, hd - 0.32, false); box(g, 1.0, 0.3, 0.04, STD(c2), x, 1.92, hd - 0.33, false); });
-    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.2, 0.4, 10), STD(0xb0612e)); pot.position.set(hw - 0.9, 0.2, hd - 0.9); g.add(pot); [[0, 0.7, 0], [0.18, 0.55, 0.1], [-0.16, 0.6, -0.1]].forEach(([dx, y, dz]) => { const lf = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), STD(0x3fae5a)); lf.position.set(hw - 0.9 + dx, y, hd - 0.9 + dz); lf.scale.y = 0.8; g.add(lf); });
+    [[-0.4, 0x4f9dff, 0x3ddc84]].forEach(([x, c1, c2]) => { box(g, 1.2, 0.9, 0.08, timber, x, 2.1, hd - 0.28); box(g, 1.0, 0.7, 0.04, STD(c1), x, 2.1, hd - 0.32, false); box(g, 1.0, 0.3, 0.04, STD(c2), x, 1.92, hd - 0.33, false); });
+    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.2, 0.4, 10), STD(0xb0612e)); pot.position.set(hw - 0.9, 0.2, -hd + 0.9); g.add(pot); [[0, 0.7, 0], [0.18, 0.55, 0.1], [-0.16, 0.6, -0.1]].forEach(([dx, y, dz]) => { const lf = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), STD(0x3fae5a)); lf.position.set(hw - 0.9 + dx, y, -hd + 0.9 + dz); lf.scale.y = 0.8; g.add(lf); });
     box(g, 0.04, 0.9, 0.04, STD(0x444444), 0.8, H - 0.5, 0.2, false); box(g, 0.4, 0.34, 0.4, STD(0xfff3c4, { emissive: 0xffd36b, emissiveIntensity: 1.1 }), 0.8, H - 1.05, 0.2, false);
     cabinLight = new THREE.PointLight(0xffd8a0, 0.7, 14); cabinLight.position.set(0.8, H - 1.2, 0.2); g.add(cabinLight);
+    // ---- KITCHEN: L-shaped counters, stove with hood, sink, fridge, cupboards, pots, food ----
+    const cabM = STD(0x8a5a2e, { map: woodTex }), topM = STD(0xece6da), steel = STD(0xc0c8d4, { metalness: 0.7, roughness: 0.3 }), blackM = STD(0x23272f), CH = 0.92;
+    box(g, 0.72, CH, 2.0, cabM, hw - 0.62, CH / 2, 2.45); box(g, 0.8, 0.07, 2.08, topM, hw - 0.6, CH + 0.035, 2.45);
+    box(g, 1.4, CH, 0.72, cabM, 3.65, CH / 2, hd - 0.58); box(g, 1.48, 0.07, 0.8, topM, 3.65, CH + 0.035, hd - 0.56);
+    [1.7, 2.35, 3.0].forEach(z => box(g, 0.04, 0.7, 0.5, STD(0x6b4220), hw - 0.99, 0.46, z, false)); [3.15, 3.65, 4.15].forEach(x => box(g, 0.5, 0.7, 0.04, STD(0x6b4220), x, 0.46, hd - 0.93, false));
+    box(g, 0.76, 0.1, 0.9, blackM, hw - 0.6, CH + 0.12, 1.95); box(g, 0.05, 0.55, 0.7, STD(0x15181d, { metalness: 0.4 }), hw - 0.99, 0.5, 1.95, false); box(g, 0.06, 0.05, 0.55, steel, hw - 1.03, 0.78, 1.95, false);
+    [[0.2, 0.26], [0.2, -0.26], [-0.2, 0.26], [-0.2, -0.26]].forEach(([dx, dz], i) => { const br = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.03, 12), STD(0x3a3f4a)); br.position.set(hw - 0.6 + dx, CH + 0.19, 1.95 + dz); g.add(br); const fl = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.2, 6), new THREE.MeshBasicMaterial({ color: i % 2 ? 0x5ab4ff : 0xff9a3a, transparent: true, opacity: 0.9 })); fl.position.set(hw - 0.6 + dx, CH + 0.3, 1.95 + dz); fl.visible = false; g.add(fl); kitchenFx.flames.push(fl); });
+    const kpot = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.15, 0.22, 12), STD(0x9aa3b0, { metalness: 0.7, roughness: 0.3 })); kpot.position.set(hw - 0.4, CH + 0.3, 2.21); g.add(kpot); box(g, 0.26, 0.03, 0.26, steel, hw - 0.4, CH + 0.42, 2.21, false); kitchenFx.pot = { x: CAB.x + hw - 0.4, y: CH + 0.55, z: CAB.z + 2.21 };
+    const kettle = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), STD(0xc41428, { metalness: 0.4 })); kettle.position.set(hw - 0.8, CH + 0.32, 1.69); kettle.scale.y = 0.85; g.add(kettle);
+    box(g, 0.92, 0.22, 1.1, steel, hw - 0.55, 2.35, 1.95); box(g, 0.2, 0.9, 0.2, steel, hw - 0.55, 2.95, 1.95);
+    box(g, 0.64, 0.08, 0.84, steel, hw - 0.55, CH + 0.09, 2.95); box(g, 0.5, 0.06, 0.7, STD(0x3b8fd0, { transparent: true, opacity: 0.8 }), hw - 0.55, CH + 0.1, 2.95, false); box(g, 0.06, 0.34, 0.06, steel, hw - 0.28, CH + 0.26, 2.95); box(g, 0.3, 0.05, 0.05, steel, hw - 0.44, CH + 0.42, 2.95, false);
+    box(g, 0.9, 2.0, 0.9, STD(0xe9edf2, { metalness: 0.3, roughness: 0.4 }), hw - 0.6, 1.0, hd - 0.6); box(g, 0.04, 1.2, 0.04, steel, hw - 1.07, 1.35, hd - 0.9, false); box(g, 0.04, 0.5, 0.04, steel, hw - 1.07, 0.55, hd - 0.9, false); box(g, 0.92, 0.03, 0.92, STD(0x9aa3b0), hw - 0.6, 0.78, hd - 0.6, false);
+    [[0.3, 0xff6fa8], [-0.1, 0x4f9dff], [0.0, 0xffd84a]].forEach(([dz, c], i) => box(g, 0.05, 0.1, 0.1, STD(c), hw - 1.08, 1.7 + i * 0.12, hd - 0.6 + dz, false));
+    box(g, 1.46, 0.8, 0.4, cabM, 3.65, 2.2, hd - 0.4); box(g, 0.4, 0.8, 1.05, cabM, hw - 0.38, 2.3, 2.95); [3.15, 3.65, 4.15].forEach(x => box(g, 0.04, 0.6, 0.02, STD(0x6b4220), x, 2.2, hd - 0.61, false));
+    box(g, 0.5, 0.03, 0.34, floorM, 3.35, CH + 0.09, hd - 0.58, false); box(g, 0.2, 0.02, 0.04, steel, 3.55, CH + 0.12, hd - 0.58, false);
+    { const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.12, 0.1, 10), STD(0xe0b070)); bowl.position.set(4.05, CH + 0.12, hd - 0.58); g.add(bowl); [0xff4a3a, 0xffc03a, 0x6ad84a].forEach((c, i) => { const f = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), STD(c)); f.position.set(3.97 + i * 0.08, CH + 0.23, hd - 0.58 + (i % 2) * 0.05); g.add(f); }); }
+    box(g, 0.34, 0.12, 0.2, STD(0xd8a05a), 3.6, CH + 0.13, hd - 0.4, false);
+    [[0.0, 0xc41428], [0.12, 0x6ad84a], [0.24, 0xff9a3a], [0.36, 0xffd84a]].forEach(([dx, c], i) => { const jr = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.18, 8), STD(c, { transparent: true, opacity: 0.9 })); jr.position.set(3.2 + dx, 2.7 + 0.09, hd - 0.4); g.add(jr); });
+    [0.0, 0.3, 0.6].forEach((dx, i) => { const gl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), STD(0xf4ecd8)); gl.position.set(2.2 + dx, H - 0.5 - (i % 2) * 0.1, 1.4); g.add(gl); box(g, 0.01, 0.4, 0.01, STD(0x6b4a2e), 2.2 + dx, H - 0.25, 1.4, false); });
+    // ---- extras: porch bench, rain barrel, vegetable patch with scarecrow, hanging baskets, ivy ----
+    box(g, 1.4, 0.08, 0.5, floorM, hw + 2.2, 0.46, -1.55); box(g, 1.4, 0.4, 0.06, floorM, hw + 2.2, 0.72, -1.78); [-0.6, 0.6].forEach(dx => box(g, 0.08, 0.42, 0.4, darkW, hw + 2.2 + dx, 0.22, -1.55, false));
+    { const brl = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.38, 0.95, 12), STD(0x8a5a2e, { map: woodTex })); brl.position.set(-hw - 0.9, 0.48, hd + 0.8); g.add(brl); [0.2, 0.75].forEach(y => { const hp = new THREE.Mesh(new THREE.CylinderGeometry(0.435, 0.435, 0.05, 12), steel); hp.position.set(-hw - 0.9, y, hd + 0.8); g.add(hp); }); const wt = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.03, 12), STD(0x3aa6e0, { transparent: true, opacity: 0.85 })); wt.position.set(-hw - 0.9, 0.93, hd + 0.8); g.add(wt); }
+    [-1, 0, 1].forEach(row => { box(g, 5.0, 0.14, 0.9, soilM0(), 0, 0.07, hd + 3.0 + row * 1.1, false); for (let k = 0; k < 9; k++) { const x = -2.1 + k * 0.52, z = hd + 3.0 + row * 1.1; if (row === -1) { const cb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), STD(0x7ad06a)); cb.position.set(x, 0.3, z); cb.scale.y = 0.8; g.add(cb); } else if (row === 0) { box(g, 0.14, 0.14, 0.14, STD(0xff8a2a), x, 0.2, z, false); box(g, 0.2, 0.3, 0.2, STD(0x4fae4a), x, 0.38, z, false); } else { const pk = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), STD(0xff7a1a)); pk.position.set(x, 0.28, z); pk.scale.y = 0.8; g.add(pk); } } });
+    { const sx = 2.9, sz = hd + 3.2; box(g, 0.1, 2.0, 0.1, darkW, sx + 2.6, 1.0, sz - 0.9); box(g, 1.2, 0.08, 0.08, darkW, sx + 2.6, 1.6, sz - 0.9); box(g, 0.5, 0.6, 0.2, STD(0xc41428), sx + 2.6, 1.35, sz - 0.9, false); const hd2 = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), STD(0xe8c890)); hd2.position.set(sx + 2.6, 1.85, sz - 0.9); g.add(hd2); const hat = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.3, 8), STD(0xb0804a)); hat.position.set(sx + 2.6, 2.1, sz - 0.9); g.add(hat); box(g, 0.5, 0.04, 0.5, STD(0xb0804a), sx + 2.6, 1.98, sz - 0.9, false); }
+    [-1.6, 1.6].forEach(z => { box(g, 0.02, 0.35, 0.02, STD(0x444444), hw + 2.8, 2.4, z, false); const bs = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), STD(0x6b4a2e)); bs.position.set(hw + 2.8, 2.15, z); bs.scale.y = 0.7; g.add(bs); for (let k = 0; k < 5; k++) box(g, 0.1, 0.1, 0.1, STD(flowerCols[(k + (z > 0 ? 1 : 3)) % 5]), hw + 2.8 + (k - 2) * 0.07, 2.32 + (k % 2) * 0.05, z + (k % 3 - 1) * 0.07, false); });
+    for (let k = 0; k < 16; k++) box(g, 0.2, 0.2, 0.08, STD(k % 3 ? 0x3fae5a : 0x2f8f4a), -hw + 0.4 + (k % 4) * 0.22 + Math.sin(k) * 0.1, 0.9 + Math.floor(k / 4) * 0.55, hd + 0.24, false);
     // ---- porch with awning, posts, lantern, sign ----
     box(g, 2.8, 0.1, 3.8, floorM, hw + 1.6, 0.05, 0); [-1.6, 1.6].forEach(z => box(g, 0.2, 2.7, 0.2, timber, hw + 2.8, 1.35, z)); const aw = box(g, 3.2, 0.16, 4.1, roofM, hw + 1.5, 2.85, 0); aw.rotation.z = -0.14; box(g, 0.14, 0.14, 4.1, timber, hw + 2.9, 2.62, 0);
     box(g, 0.2, 0.34, 0.2, STD(0xfff3c4, { emissive: 0xffd36b, emissiveIntensity: 1.1 }), hw + 0.4, 2.15, 1.5, false);
@@ -932,6 +980,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     addSolid(CAB.x, CAB.z + hd, hw + t, t / 2, 'wall', H); addSolid(CAB.x, CAB.z - hd, hw + t, t / 2, 'wall', H); addSolid(CAB.x - hw, CAB.z, t / 2, hd, 'wall', H);
     [-1, 1].forEach(sd => addSolid(CAB.x + hw, CAB.z + sd * (doorHalf + segL / 2), t / 2, segL / 2, 'wall', H));
     addSolid(BED.x, BED.z, 0.85, 1.4, 'bench', 0.9); addSolid(CAB.x + fx, CAB.z + fz, 0.65, 1.1, 'bench', 1.6); addSolid(CAB.x + tx, CAB.z + tz, 0.85, 0.85, 'bench', 0.95); addSolid(CAB.x + shx, CAB.z + shz, 1.15, 0.24, 'bench', 2.5);
+    addSolid(CAB.x + hw - 0.62, CAB.z + 2.45, 0.4, 1.02, 'bench', 1.0); addSolid(CAB.x + 3.65, CAB.z + hd - 0.58, 0.72, 0.38, 'bench', 1.0); addSolid(CAB.x + hw - 0.6, CAB.z + hd - 0.6, 0.48, 0.48, 'bench', 2.0);
     tree(CAB.x - hw - 3.6, CAB.z - 3.2, 1.0); tree(CAB.x + 2, CAB.z + hd + 5, 0.9);
   })();
   function natureStep(dt, T) {
@@ -966,6 +1015,129 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
       row.appendChild(btn); $('trailList').appendChild(row);
     });
   }
+  // ================= FOOD, HUNGER, CAMPFIRES, KITCHEN =================
+  const FOOD = {
+    meat: { icon: '🥩', name: 'surowe mięso', hunger: 8 },
+    cooked: { icon: '🍖', name: 'pieczone mięso', hunger: 40 },
+    stew: { icon: '🍲', name: 'gulasz', hunger: 70 },
+    jerky: { icon: '🥓', name: 'suszone mięso', hunger: 25 }
+  };
+  const itemIcon = k => (FOOD[k] ? FOOD[k].icon : RES_ICON[k]);
+  function giveItem(k, n) { if (FOOD[k]) S.food[k] = (S.food[k] || 0) + n; else S.res[k] = (S.res[k] || 0) + n; }
+  const HUNGER_FULL_TIME = 600; // seconds from 100% to 0% without eating
+  let hungerWarn = false, saveT = 0, foodT = 0, lightT = 0;
+  function updFood() {
+    const el = $('foodPill'); if (!el) return; const h = Math.round(clamp(S.hunger, 0, 100));
+    const items = ['meat', 'cooked', 'stew', 'jerky'].filter(k => (S.food[k] || 0) > 0).map(k => FOOD[k].icon + S.food[k]).join(' ');
+    const html = '🍖 <span class="hbar"><i style="width:' + h + '%"></i></span> ' + h + '%' + (S.fullT > 0 ? ' 😋' : '') + (items ? ' · ' + items : '') + (h <= 0 ? ' <b>GŁODNY!</b>' : '');
+    if (el._h !== html) { el.innerHTML = html; el._h = html; }
+    el.classList.toggle('low', h <= 25);
+  }
+  function hungerStep(dt) {
+    if (bossMode || dying) return;
+    let rate = 100 / HUNGER_FULL_TIME;
+    if (S.fullT > 0) { S.fullT = Math.max(0, S.fullT - dt); rate = 0; } else if (inCabin(P.x, P.z) || nearFire(5)) rate *= 0.5;
+    S.hunger = Math.max(0, S.hunger - rate * dt);
+    if (S.hunger < 25 && !hungerWarn) { hungerWarn = true; banner('Jesteś głodny 🍖', 'Zjedz coś (F lub dotknij paska głodu). Upiecz mięso na ognisku albo w kuchni.', 3400); }
+    if (S.hunger > 50) hungerWarn = false;
+    saveT += dt; if (saveT > 8) { saveT = 0; save(); }
+    foodT -= dt; if (foodT <= 0) { foodT = 0.4; updFood(); }
+  }
+  function eatItem(k) {
+    if (!FOOD[k] || (S.food[k] || 0) <= 0) { SFX.no(); return false; }
+    if (S.hunger >= 99) { tip('Jesteś najedzony 😌'); return false; }
+    S.food[k]--; S.hunger = Math.min(100, S.hunger + FOOD[k].hunger); if (k === 'stew') S.fullT = 180;
+    S.stats.meals++; SFX.eat(); if (k === 'meat') tip('Surowe… 🤢 Lepiej je upiec na ognisku.'); else popText(P.x, P.y + 2.4, P.z, FOOD[k].icon + ' +' + FOOD[k].hunger, '#7fe07a');
+    save(); updFood(); return true;
+  }
+  function eatBest() { if (state !== 'play' || dying) return false; for (const k of ['cooked', 'jerky', 'stew', 'meat']) if ((S.food[k] || 0) > 0) return eatItem(k); tip('Nie masz jedzenia. Zapoluj na zwierzęta i upiecz mięso.'); SFX.no(); return false; }
+
+  // ---- campfires: one permanent in the yard, you can light up to 3 more (3 wood each) ----
+  const FIRES = [], fireLights = [];
+  for (let i = 0; i < 2; i++) { const L = new THREE.PointLight(0xff8a3a, 0, 16); L.userData = { f: null }; scene.add(L); fireLights.push(L); }
+  function makeFireMesh(permanent) {
+    const g = new THREE.Group(), stoneM = STD(0x8a8f99, { flatShading: true, roughness: 1 }), logM = STD(0x5a3a22, { map: woodTex });
+    for (let i = 0; i < 9; i++) { const a = i / 9 * 6.283, st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.2 + (i % 3) * 0.04, 0), stoneM); st.position.set(Math.cos(a) * 0.74, 0.12, Math.sin(a) * 0.74); st.scale.y = 0.7; st.castShadow = true; g.add(st); }
+    for (let i = 0; i < 4; i++) { const lg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.95, 6), logM); lg.rotation.z = Math.PI / 2; lg.rotation.y = i * 0.8; lg.position.y = 0.17 + (i % 2) * 0.07; g.add(lg); }
+    const ember = new THREE.Mesh(new THREE.CircleGeometry(0.55, 14), new THREE.MeshBasicMaterial({ color: 0xff4a1a })); ember.rotation.x = -Math.PI / 2; ember.position.y = 0.06; g.add(ember);
+    const flames = [[0, 0, 0xff7a1a, 1.0], [0.16, 0.1, 0xffc03a, 0.72], [-0.17, -0.08, 0xff4a1a, 0.85], [0.02, -0.17, 0xffe27a, 0.55]].map(([x, z, c, sc]) => { const f = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.95, 6), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.93 })); f.position.set(x, 0.55 * sc + 0.1, z); f.userData = { y0: 0.55 * sc + 0.1 }; g.add(f); return f; });
+    if (permanent) {
+      const pole = STD(0x4a3a2a);
+      for (let i = 0; i < 3; i++) { const a = i / 3 * 6.283, pl = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.0, 5), pole); pl.position.set(Math.cos(a) * 0.45, 1.0, Math.sin(a) * 0.45); pl.rotation.set(Math.sin(a) * 0.42, 0, -Math.cos(a) * 0.42); g.add(pl); }
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.26, 0.3, 10), STD(0x2b2f3a, { metalness: 0.6, roughness: 0.4 })); pot.position.y = 1.0; g.add(pot);
+      const seatM = STD(0x7a5230, { map: woodTex });
+      [0.4, 2.5, 4.4].forEach(a => { const h = new THREE.Group(); h.position.set(Math.cos(a) * 2.0, 0.22, Math.sin(a) * 2.0); h.rotation.y = a + Math.PI / 2; const sl = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.3, 8), seatM); sl.rotation.z = Math.PI / 2; h.add(sl); g.add(h); });
+    }
+    g.userData = { flames, ember }; return g;
+  }
+  function addFire(x, z, permanent) {
+    const y = groundH(x, z), mesh = makeFireMesh(permanent); mesh.position.set(x, y, z); scene.add(mesh);
+    const f = { x, z, y, mesh, permanent: !!permanent, burn: permanent ? 1e9 : 240, lit: true, ph: Math.random() * 6, cool: 0, solid: addSolid(x, z, 0.75, 0.75, 'bench', 0.5) };
+    FIRES.push(f); return f;
+  }
+  function removeFire(f) { scene.remove(f.mesh); const si = solids.indexOf(f.solid); if (si >= 0) solids.splice(si, 1); const i = FIRES.indexOf(f); if (i >= 0) FIRES.splice(i, 1); }
+  function nearFire(r) { let best = null, bd = r; for (const f of FIRES) { if (!f.lit) continue; const d = Math.hypot(P.x - f.x, P.z - f.z); if (d < bd) { bd = d; best = f; } } return best; }
+  function fireNear(x, z, r) { for (const f of FIRES) if (f.lit && Math.hypot(x - f.x, z - f.z) < r) return true; return false; }
+  function placeFire() {
+    if (state !== 'play' || paused || bossMode || dying) return false;
+    if (!(P.zone === 'forest' || P.zone === 'mountain') || inCabin(P.x, P.z)) { tip('Ognisko rozpalisz w lesie albo w górach'); SFX.no(); return false; }
+    if ((S.res.wood || 0) < 3) { tip('Potrzebujesz 3 🪵, żeby rozpalić ognisko'); SFX.no(); return false; }
+    const x = P.x - Math.sin(P.yaw) * 1.9, z = P.z - Math.cos(P.yaw) * 1.9;
+    if (inWater(x, z)) { tip('Nie w wodzie!'); SFX.no(); return false; }
+    S.res.wood -= 3; const placed = FIRES.filter(f => !f.permanent); if (placed.length >= 3) removeFire(placed[0]);
+    const f = addFire(x, z, false); save(); updRes(); SFX.craft(); burst(x, f.y + 0.4, z, 0xff7a1a, 14, 3);
+    tip('🔥 Ognisko płonie 4 minuty: piecz mięso (E), jest ciepło, duchy się boją'); return true;
+  }
+  function cookAtFire() {
+    const f = nearFire(2.9); if (!f) return false;
+    if ((S.food.meat || 0) <= 0) { tip('Nie masz surowego mięsa. Zapoluj na zwierzęta.'); SFX.no(); return false; }
+    S.food.meat--; S.food.cooked++; S.stats.cooked++; SFX.sizzle(); popText(f.x, f.y + 1.8, f.z, '🍖 +1', '#ffd36b'); burst(f.x, f.y + 0.9, f.z, 0xffb04a, 8, 2.2); save(); updFood(); return true;
+  }
+  function fireStep(dt, T) {
+    for (let i = FIRES.length - 1; i >= 0; i--) {
+      const f = FIRES[i]; f.ph += dt;
+      if (!f.permanent) { if (f.lit) { f.burn -= dt; if (f.burn <= 0) { f.lit = false; f.cool = 14; } } else { f.cool -= dt; if (f.cool <= 0) { removeFire(f); continue; } } }
+      const k = f.lit ? Math.min(1, f.burn / 25) : 0;
+      f.mesh.userData.flames.forEach((fl, j) => { fl.scale.set(0.85 + 0.2 * Math.sin(T * 9 + j), (1 + 0.28 * Math.sin(T * 12 + j * 1.9 + f.ph)) * k + 0.001, 0.85 + 0.2 * Math.cos(T * 8 + j)); fl.position.y = fl.userData.y0 * (0.4 + 0.6 * k); fl.visible = k > 0.02; });
+      f.mesh.userData.ember.material.color.setHex(f.lit ? 0xff4a1a : 0x2a1a14);
+      if (f.lit && Math.hypot(P.x - f.x, P.z - f.z) < 70) {
+        if (Math.random() < dt * 7) { const m = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({ color: 0xb8bcc4, transparent: true })); m.position.set(f.x + rnd(-0.2, 0.2), f.y + 1.3, f.z + rnd(-0.2, 0.2)); m.scale.setScalar(rnd(2.5, 4)); scene.add(m); parts.push({ m, vx: 0.25, vy: 0.9, vz: 0.08, life: 2.0 }); }
+        if (Math.random() < dt * 5) { const m = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({ color: 0xffa040 })); m.position.set(f.x + rnd(-0.3, 0.3), f.y + 0.6, f.z + rnd(-0.3, 0.3)); scene.add(m); parts.push({ m, vx: rnd(-0.5, 0.5), vy: rnd(1.5, 2.6), vz: rnd(-0.5, 0.5), life: 0.7 }); }
+      }
+    }
+    lightT -= dt; if (lightT <= 0) { lightT = 0.4; const lit = FIRES.filter(f => f.lit).sort((a, b) => Math.hypot(a.x - P.x, a.z - P.z) - Math.hypot(b.x - P.x, b.z - P.z)); fireLights.forEach((L, i) => { L.userData.f = lit[i] || null; }); }
+    fireLights.forEach(L => { const f = L.userData.f; if (f && f.lit && FIRES.indexOf(f) >= 0) { L.position.set(f.x, f.y + 1.0, f.z); L.intensity = Math.min(1, f.burn / 25) * (0.9 + 0.25 * Math.sin(T * 13 + f.ph) + 0.12 * Math.sin(T * 7.3)); } else L.intensity = 0; });
+  }
+  addFire(CAB.x + CAB.hw + 3.8, CAB.z - 3.8, true);
+
+  // ---- kitchen: recipes (meat from hunting) ----
+  const RECIPES = [
+    { id: 'roast', icon: '🍖', name: 'Pieczone mięso', need: { meat: 1 }, give: { cooked: 1 }, txt: 'Syci +40' },
+    { id: 'stew', icon: '🍲', name: 'Gulasz', need: { meat: 3 }, give: { stew: 1 }, txt: 'Syci +70, głód nie rośnie przez 3 min' },
+    { id: 'jerky', icon: '🥓', name: 'Suszone mięso', need: { meat: 2 }, give: { jerky: 3 }, txt: '3 porcje po +25, łatwe do noszenia' }
+  ];
+  function cookRecipe(id) {
+    const rc = RECIPES.find(x => x.id === id); if (!rc) return false;
+    if (!Object.keys(rc.need).every(k => (S.food[k] || 0) >= rc.need[k])) { SFX.no(); tip('Za mało surowego mięsa'); return false; }
+    for (const k in rc.need) S.food[k] -= rc.need[k]; for (const k in rc.give) S.food[k] = (S.food[k] || 0) + rc.give[k];
+    S.stats.cooked++; kitchenFx.t = 2.4; SFX.sizzle(); SFX.craft(); save(); updFood(); return true;
+  }
+  function renderKitchen() {
+    $('kitchenInfo').innerHTML = 'Głód: <b>' + Math.round(S.hunger) + '%</b>' + (S.fullT > 0 ? ' · 😋 najedzony jeszcze ' + Math.ceil(S.fullT) + ' s' : '') + ' · surowe mięso: <b>' + (S.food.meat || 0) + '</b> 🥩';
+    $('kitchenList').innerHTML = ''; $('kitchenFood').innerHTML = '';
+    RECIPES.forEach(rc => {
+      const can = Object.keys(rc.need).every(k => (S.food[k] || 0) >= rc.need[k]);
+      const row = document.createElement('div'); row.className = 'bowrow';
+      row.innerHTML = `<div class="ic" style="background:#FFF4E6">${rc.icon}</div><div class="tx"><b>${rc.name}</b><small>${Object.keys(rc.need).map(k => `<span class="cost ${(S.food[k] || 0) >= rc.need[k] ? 'ok' : 'no'}">${FOOD[k].icon} ${S.food[k] || 0}/${rc.need[k]}</span>`).join('')}${rc.txt}</small></div>`;
+      const b = document.createElement('button'); b.textContent = 'Ugotuj'; b.disabled = !can; b.onclick = () => { if (cookRecipe(rc.id)) renderKitchen(); }; row.appendChild(b); $('kitchenList').appendChild(row);
+    });
+    ['cooked', 'jerky', 'stew', 'meat'].forEach(k => {
+      const n = S.food[k] || 0, row = document.createElement('div'); row.className = 'bowrow';
+      row.innerHTML = `<div class="ic" style="background:#EAF8EA">${FOOD[k].icon}</div><div class="tx"><b>${FOOD[k].name}</b><small>masz: ${n} · syci +${FOOD[k].hunger}${k === 'meat' ? ' (surowe, lepiej upiec)' : ''}</small></div>`;
+      const b = document.createElement('button'); b.textContent = 'Zjedz'; b.disabled = n <= 0; b.onclick = () => { if (eatItem(k)) renderKitchen(); }; row.appendChild(b); $('kitchenFood').appendChild(row);
+    });
+  }
+
   // ================= LIVES, DEATH, COFFIN, RESPAWN =================
   let dying = false, ghostWarned = false;
   const COFFIN_SVG = '<svg viewBox="0 0 120 210" xmlns="http://www.w3.org/2000/svg"><polygon points="46,6 74,6 108,64 82,204 38,204 12,64" fill="#5a3a22" stroke="#24150a" stroke-width="5" stroke-linejoin="round"/><polygon points="52,22 68,22 92,66 72,190 48,190 28,66" fill="#6e4a2c"/><rect x="55" y="48" width="10" height="84" rx="2" fill="#e6c555"/><rect x="38" y="68" width="44" height="10" rx="2" fill="#e6c555"/><circle cx="60" cy="208" r="0" fill="none"/></svg>';
@@ -989,7 +1161,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   function respawn() {
     if (!dying) return;
     P.x = BED.x + 1.7; P.z = BED.z - 1.9; P.y = 0; P.vx = P.vz = 0; P.vy = 0; P.yaw = -Math.PI / 2; P.pitch = 0; P.hurtT = 0; P.stunT = 0;
-    ghostsClear(); ENV.dark = 0; ENV.darkTarget = 0; $('deathScr').classList.remove('show'); dying = false; paused = false;
+    ghostsClear(); S.hunger = Math.max(S.hunger, 45); updFood(); ENV.dark = 0; ENV.darkTarget = 0; $('deathScr').classList.remove('show'); dying = false; paused = false;
     banner('Odrodziłeś się w domku 🏠', S.lives <= 0 ? 'Wyczerpany: chodzisz wolniej. Prześpij się w łóżku.' : 'Żyć: ' + S.lives + '/3. Przy łóżku możesz się wyspać.', 3000);
   }
   // ================= GHOSTS (night, forest and mountains) =================
@@ -1007,7 +1179,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   function spawnGhost(zone) {
     const A = areaOf(zone), ang = Math.random() * 6.283, dist = rnd(20, 40);
     let x = clamp(P.x + Math.cos(ang) * dist, A.x0, A.x1), z = clamp(P.z + Math.sin(ang) * dist, A.z0, A.z1);
-    if (inCabin(x, z) || Math.hypot(x - P.x, z - P.z) < 12) return;
+    if (inCabin(x, z) || Math.hypot(x - P.x, z - P.z) < 12 || fireNear(x, z, 10)) return;
     const mesh = makeGhostMesh(); mesh.position.set(x, groundH(x, z) + 0.7, z); mesh.visible = true;
     GHOSTS.push({ mesh, x, z, zone, fade: 0, target: 1, ph: Math.random() * 6.28, h: Math.random() * 6.28, wailT: rnd(6, 14) });
     if (!ghostWarned) { ghostWarned = true; banner('👻 Noc: duchy!', 'Nie atakuj ich ani nie strzelaj do nich. Zginiesz i zapłacisz połowę kasy.', 4600); SFX.wail(); }
@@ -1019,7 +1191,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     if (want > 0 && act < want && Math.random() < dt * 1.2) spawnGhost(zone);
     for (let i = GHOSTS.length - 1; i >= 0; i--) {
       const g = GHOSTS[i], m = g.mesh;
-      if (!night || !inZone || g.zone !== zone) g.target = 0;
+      if (!night || !inZone || g.zone !== zone || fireNear(g.x, g.z, 7.5)) g.target = 0;
       g.fade += (g.target - g.fade) * clamp(dt * 1.4, 0, 1);
       if (g.target === 0 && g.fade < 0.03) { scene.remove(m); GHOSTS.splice(i, 1); continue; }
       const dx = P.x - g.x, dz = P.z - g.z, d = Math.hypot(dx, dz) || 0.01; g.ph += dt;
@@ -1036,7 +1208,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   function updTrophies() { trophyMeshes.forEach((t, i) => { t.visible = i < 4 ? !!S.bossesWon[i] : !!S.peaks[i - 4]; }); }
   let sleeping = false;
   function applySleep() {
-    const night = ENV.fBase < 0.5; S.dayT = 0; S.lives = 3; updLives(); ENV.weather = 'clear'; ENV.rainK = 0; ENV.fogK = 0; ENV.wT = rnd(80, 150);
+    const night = ENV.fBase < 0.5; S.dayT = 0; S.lives = 3; updLives(); S.hunger = Math.max(0, S.hunger - 15); updFood(); ENV.weather = 'clear'; ENV.rainK = 0; ENV.fogK = 0; ENV.wT = rnd(80, 150);
     if (night) S.restedT = 180; save(); sleeping = false; paused = false;
     banner('Dzień dobry! ☀️', (night ? 'Wyspany: +25% kasy przez 3 minuty. ' : 'Krótka drzemka. Wyśpij się w nocy po bonus. ') + 'Żyć: 3/3', 2800);
   }
@@ -1049,11 +1221,11 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   // ================= ANIMALS (hunting in the forest) =================
   const ANIMALS = [], respawnQueue = [];
   const ANIMAL_DEF = {
-    rabbit: { hp: 1, speed: 6.5, flee: 9, r: 0.35, cy: 0.35, drop: { hide: 1 }, count: 6, label: 'Królik' },
-    deer: { hp: 3, speed: 7.5, flee: 15, r: 0.75, cy: 1.2, drop: { hide: 2 }, count: 5, label: 'Jeleń', chargeOnHit: true },
-    boar: { hp: 5, speed: 6.2, flee: 0, r: 0.75, cy: 0.75, drop: { hide: 3 }, count: 3, label: 'Dzik', aggressive: true },
-    bird: { hp: 1, speed: 6, flee: 0, r: 0.45, cy: 0, drop: { feather: 3 }, count: 6, label: 'Ptak', flying: true },
-    goat: { hp: 2, speed: 7, flee: 12, r: 0.6, cy: 0.95, drop: { hide: 2, feather: 1 }, count: 10, label: 'Kozica', area: 'mountain' },
+    rabbit: { hp: 1, speed: 6.5, flee: 9, r: 0.35, cy: 0.35, drop: { hide: 1, meat: 1 }, count: 6, label: 'Królik' },
+    deer: { hp: 3, speed: 7.5, flee: 15, r: 0.75, cy: 1.2, drop: { hide: 2, meat: 3 }, count: 5, label: 'Jeleń', chargeOnHit: true },
+    boar: { hp: 5, speed: 6.2, flee: 0, r: 0.75, cy: 0.75, drop: { hide: 3, meat: 4 }, count: 3, label: 'Dzik', aggressive: true },
+    bird: { hp: 1, speed: 6, flee: 0, r: 0.45, cy: 0, drop: { feather: 3, meat: 1 }, count: 6, label: 'Ptak', flying: true },
+    goat: { hp: 2, speed: 7, flee: 12, r: 0.6, cy: 0.95, drop: { hide: 2, feather: 1, meat: 2 }, count: 10, label: 'Kozica', area: 'mountain' },
     wolf: { hp: 999, speed: 6.8, flee: 0, r: 0.7, cy: 0.8, drop: {}, count: 3, label: 'Wilk', immortal: true, mesh: 'wolf' },
     mwolf: { hp: 999, speed: 6.8, flee: 0, r: 0.7, cy: 0.8, drop: {}, count: 3, label: 'Wilk', immortal: true, mesh: 'wolf', area: 'mountain' }
   };
@@ -1108,18 +1280,19 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     if (navigator.vibrate) { try { navigator.vibrate(120); } catch (e) {} }
     tip(a.d.label + ' cię staranował! Strzelaj z daleka.');
   }
-  function animalHit(p) {
-    for (const a of ANIMALS) { if (!a.alive) continue; const cy = a.y + a.d.cy + (a.d.flying ? 0 : groundH(a.x, a.z)); if (Math.hypot(p.x - a.x, p.y - cy, p.z - a.z) < a.d.r * 1.35 + 0.15) return a; }
+  function animalHit(p, ex) {
+    for (const a of ANIMALS) { if (!a.alive || (ex && ex.has(a))) continue; const cy = a.y + a.d.cy + (a.d.flying ? 0 : groundH(a.x, a.z)); if (Math.hypot(p.x - a.x, p.y - cy, p.z - a.z) < a.d.r * 1.35 + 0.15) return a; }
     return null;
   }
   function hurtAnimal(a, arrow) {
     if (a.d.immortal) { wolfAnger(a); return; }
     const at = arrow.atype || 'normal'; let dmg = 1 + Math.floor(arrow.bow.mul / 2.5);
-    if (at === 'fire' || arrow.bow.ability === 'fire') dmg *= 2; if (at === 'boom') dmg += 2; if (at === 'ruby') dmg *= 2; if (at === 'poison' || at === 'shock') dmg += 1;
+    if (at === 'fire' || arrow.bow.ability === 'fire') dmg *= 2; if (at === 'boom') dmg += 2; if (at === 'ruby') dmg *= 2; if (at === 'poison' || at === 'shock') dmg += 1; if (at === 'storm') dmg += 3; if (at === 'pierce') dmg += 1;
     a.hp -= dmg; SFX.hitThud(); burst(a.x, a.y + a.d.cy, a.z, 0xc0392b, 8, 2.5);
     if (a.hp <= 0) {
       a.alive = false; a.deadT = 0; a.vy = 0; const txt = [];
-      for (const k in a.d.drop) { S.res[k] = (S.res[k] || 0) + a.d.drop[k]; txt.push('+' + a.d.drop[k] + ' ' + RES_ICON[k]); }
+      const dm = (arrow.atype === 'hunter' || (arrow.bow && arrow.bow.ability === 'hunt')) ? 2 : 1;
+      for (const k in a.d.drop) { const n = a.d.drop[k] * dm; giveItem(k, n); txt.push('+' + n + ' ' + itemIcon(k)); } updFood();
       S.stats.hunted++; save(); updRes(); popText(a.x, a.y + 1.8, a.z, a.d.label + '  ' + txt.join(' '), '#ffe066'); SFX.coin();
     } else { a.fleeT = 3; if (a.d.aggressive || a.d.chargeOnHit) { a.angryT = 7; tip('🐗 ' + a.d.label + ' się wściekł i szarżuje na ciebie!'); SFX.roar(); } }
   }
@@ -1283,8 +1456,18 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     { id: 18, name: 'Łuk Snajpera', price: 7500, shop: true, draw: 0.62, speed: 115, mul: 5.6, c1: 0x22262e, c2: 0x0a0c10, glow: false, icon: '🔭', trail: 0xffffff },
     { id: 19, name: 'Łuk Królewski', price: 10000, shop: true, draw: 0.42, speed: 92, mul: 6.6, c1: 0xffc93c, c2: 0xc41428, glow: true, icon: '👑', trail: 0xffd84a },
     { id: 20, name: 'Łuk Gwiazd', price: 15000, shop: true, draw: 0.36, speed: 100, mul: 7.6, c1: 0x9fd8ff, c2: 0x2a4a8a, glow: true, icon: '⭐', ability: 'seek', trail: 0xbfe8ff },
-    { id: 21, name: 'Łuk Wieczności', price: 25000, shop: true, draw: 0.3, speed: 110, mul: 9.0, c1: 0xff4f8b, c2: 0x6a1a8a, glow: true, icon: '♾️', ability: 'triple', trail: 0xff8ac8 }
+    { id: 21, name: 'Łuk Wieczności', price: 25000, shop: true, draw: 0.3, speed: 110, mul: 9.0, c1: 0xff4f8b, c2: 0x6a1a8a, glow: true, icon: '♾️', ability: 'triple', trail: 0xff8ac8 },
+    { id: 22, name: 'Łuk Burzowy', price: 40000, shop: true, draw: 0.28, speed: 118, mul: 10.5, c1: 0x5fd8ff, c2: 0x23406a, glow: true, icon: '⛈️', ability: 'explode', trail: 0x9fe8ff },
+    { id: 23, name: 'Łuk Smoczy', price: 60000, shop: true, draw: 0.26, speed: 122, mul: 12.5, c1: 0xff5a1a, c2: 0x4a0a0a, glow: true, icon: '🐲', ability: 'fire', trail: 0xff7a1a },
+    { id: 24, name: 'Łuk Cienia', price: 90000, shop: true, draw: 0.24, speed: 128, mul: 15, c1: 0x2a1a4a, c2: 0x0a0414, glow: true, icon: '🌑', ability: 'seek', trail: 0x8a5cff },
+    { id: 25, name: 'Łuk Kosmiczny', price: 140000, shop: true, draw: 0.2, speed: 135, mul: 19, c1: 0x9fd8ff, c2: 0xff4fd8, glow: true, icon: '🪐', ability: 'triple', trail: 0xffffff },
+    { id: 26, name: 'Łuk Rubinowy', craft: { wood: 14, iron: 8, ruby: 8 }, draw: 0.46, speed: 88, mul: 7.0, c1: 0xff2a4a, c2: 0x6a0a1a, glow: true, icon: '🔴', ability: 'fire', trail: 0xff3050 },
+    { id: 27, name: 'Łuk Obsydianowy', craft: { stone: 10, iron: 12, obsidian: 8 }, draw: 0.42, speed: 94, mul: 8.2, c1: 0x2a1a3a, c2: 0x0a0612, glow: true, icon: '⚫', ability: 'seek', trail: 0x8a5cff },
+    { id: 28, name: 'Łuk Wilczy', craft: { wood: 20, hide: 14, feather: 10, iron: 6 }, draw: 0.55, speed: 80, mul: 5.4, c1: 0x7a7f88, c2: 0x3a3e46, glow: false, icon: '🐺', ability: 'hunt' },
+    { id: 29, name: 'Łuk Burzy', craft: { iron: 14, gold: 10, ruby: 6, obsidian: 6 }, draw: 0.36, speed: 104, mul: 11.5, c1: 0x6a5aff, c2: 0x1a1a5a, glow: true, icon: '🌩️', ability: 'explode', trail: 0xb0a0ff },
+    { id: 30, name: 'Łuk Szczytu', craft: { crystal: 12, ruby: 10, obsidian: 10, gold: 10 }, draw: 0.32, speed: 112, mul: 13.5, c1: 0xf4f7fb, c2: 0x4f9dff, glow: true, icon: '🏔️', ability: 'triple', trail: 0xdff0ff }
   ];
+  const BEST_BOW = BOWS.reduce((bi, b, i) => b.mul > BOWS[bi].mul ? i : bi, 0);
   const bowModels = BOWS.map(b => makeBowModel(b.c1, b.c2, b.glow));
 
   // third-person hand bow
@@ -1315,9 +1498,9 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 
   // ================= STATE / SAVE =================
   const SAVE = 'bow-shot-v1';
-  let S = { cash: 0, res: { wood: 0, stone: 0, iron: 0, gold: 0, crystal: 0, ruby: 0, obsidian: 0, feather: 0, hide: 0 }, owned: [true].concat(new Array(21).fill(false)), restedT: 0, peaks: [false, false, false, false], nav: -1, lives: 3, equipped: 0, bossesWon: [false, false, false, false], unlocked: 0, done: new Array(10).fill(false), aim: true, fpLock: false, stats: { shots: 0, hits: 0, golds: 0, headshots: 0, trees: 0, rocks: 0, crafted: 0, bosses: 0, duelsWon: 0, hunted: 0, deaths: 0 }, rank: 0, rivalPts: {}, skin: 'base', skinsOwned: { base: true }, quiver: { fire: 0, ice: 0, boom: 0, shock: 0, poison: 0, precise: 0, split: 0, ruby: 0 }, arrowType: 'normal', dayT: 0.08 };
+  let S = { cash: 0, res: { wood: 0, stone: 0, iron: 0, gold: 0, crystal: 0, ruby: 0, obsidian: 0, feather: 0, hide: 0 }, owned: [true].concat(new Array(30).fill(false)), hunger: 100, fullT: 0, food: { meat: 0, cooked: 0, stew: 0, jerky: 0 }, restedT: 0, peaks: [false, false, false, false], nav: -1, lives: 3, equipped: 0, bossesWon: [false, false, false, false], unlocked: 0, done: new Array(10).fill(false), aim: true, fpLock: false, stats: { shots: 0, hits: 0, golds: 0, headshots: 0, trees: 0, rocks: 0, crafted: 0, bosses: 0, duelsWon: 0, hunted: 0, deaths: 0, cooked: 0, meals: 0 }, rank: 0, rivalPts: {}, skin: 'base', skinsOwned: { base: true }, quiver: { fire: 0, ice: 0, boom: 0, shock: 0, poison: 0, precise: 0, split: 0, ruby: 0, gold: 0, hunter: 0, pierce: 0, vamp: 0, storm: 0 }, arrowType: 'normal', dayT: 0.08 };
   let hasSave = false;
-  try { const d = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (d) { const def = S; S = Object.assign({}, def, d); S.res = Object.assign({}, def.res, d.res || {}); while (S.owned.length < 22) S.owned.push(false); while (S.bossesWon.length < 4) S.bossesWon.push(false); S.quiver = Object.assign({}, def.quiver, d.quiver || {}); S.skinsOwned = Object.assign({}, def.skinsOwned, d.skinsOwned || {}); S.rivalPts = Object.assign({}, d.rivalPts || {}); S.stats = Object.assign({}, def.stats, d.stats || {}); if (!S.done || S.done.length < 10) S.done = def.done; if (!Array.isArray(S.peaks)) S.peaks = [!!d.peak, false, false, false]; while (S.peaks.length < 4) S.peaks.push(false); if (typeof S.lives !== 'number') S.lives = 3; hasSave = true; } } catch (e) {}
+  try { const d = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (d) { const def = S; S = Object.assign({}, def, d); S.res = Object.assign({}, def.res, d.res || {}); while (S.owned.length < 31) S.owned.push(false); S.food = Object.assign({}, def.food, d.food || {}); if (typeof S.hunger !== 'number') S.hunger = 100; if (typeof S.fullT !== 'number') S.fullT = 0; while (S.bossesWon.length < 4) S.bossesWon.push(false); S.quiver = Object.assign({}, def.quiver, d.quiver || {}); S.skinsOwned = Object.assign({}, def.skinsOwned, d.skinsOwned || {}); S.rivalPts = Object.assign({}, d.rivalPts || {}); S.stats = Object.assign({}, def.stats, d.stats || {}); if (!S.done || S.done.length < 10) S.done = def.done; if (!Array.isArray(S.peaks)) S.peaks = [!!d.peak, false, false, false]; while (S.peaks.length < 4) S.peaks.push(false); if (typeof S.lives !== 'number') S.lives = 3; hasSave = true; } } catch (e) {}
   function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {} }
   function fmtM(n) { if (n < 1000) return '$' + Math.round(n); const u = ['K', 'M']; let i = -1; while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; } return '$' + (n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : Math.round(n)) + u[i]; }
   function earn(v) { S.cash += Math.round(v * (S.restedT > 0 ? 1.25 : 1)); }
@@ -1353,6 +1536,8 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
     if (e.code === 'KeyM') toggleSound();
     if (e.code === 'KeyV') toggleView();
+    if (e.code === 'KeyF' && state === 'play' && !paused) eatBest();
+    if (e.code === 'KeyG' && state === 'play' && !paused) placeFire();
     if (e.code === 'KeyQ' && state === 'play') cycleArrow();
   });
   addEventListener('keyup', e => keys[e.code] = false);
@@ -1377,8 +1562,9 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
 
   // ================= DRAW / SHOOT =================
   let drawing = false, drawT = 0, canShoot = true, bossCheat = false;
-  const activeBowIdx = () => bossCheat ? 21 : S.equipped;
+  const activeBowIdx = () => bossCheat ? BEST_BOW : S.equipped;
   function startDraw() {
+    if (inCabin(P.x, P.z)) return;
     if (state === 'play' && !paused && (P.zone === 'forest' || P.zone === 'mountain') && findNode()) { swingHeld = true; doSwing(); return; }
     if (state !== 'play' || paused || (P.zone !== 'range' && P.zone !== 'boss' && P.zone !== 'forest' && P.zone !== 'mountain') || !canShoot) return;
     if (P.zone === 'range' && LV.over) return;
@@ -1475,7 +1661,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
           else if (Math.abs(ln.z) < 0.22) local = { x: ln.x, y: ln.y };
           if (local) { const pd = Math.hypot(local.x, local.y); if (pd <= t.radius) { hit = { t, local, pd }; break; } }
         }
-        if (!hit && (P.zone === 'forest' || P.zone === 'mountain')) { if (ghostAt(a.pos, 0.95)) { hit = { ghost: true }; break; } const an = animalHit(a.pos); if (an) { hit = { animal: an }; break; } }
+        if (!hit && (P.zone === 'forest' || P.zone === 'mountain')) { if (ghostAt(a.pos, 0.95)) { hit = { ghost: true }; break; } const an = animalHit(a.pos, a.hitSet); if (an) { hit = { animal: an }; break; } }
         if (!hit) for (const s2 of solids) { if (s2.tag === 'tree' || s2.tag === 'wall' || s2.tag === 'pillar' || s2.tag === 'ftree' || s2.tag === 'rock') { if (a.pos.x > s2.x0 - 0.1 && a.pos.x < s2.x1 + 0.1 && a.pos.z > s2.z0 - 0.1 && a.pos.z < s2.z1 + 0.1 && a.pos.y < (s2.h || 3.2)) { dead = true; break; } } }
         if (!hit && boss && boss.alive) { const bh = bossHitTest(a.pos); if (bh) { hit = { boss: true, head: bh === 'head' }; break; } }
       }
@@ -1484,9 +1670,11 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
       if (a.vel.lengthSq() > 0.001) { const look = a.pos.clone().add(a.vel.clone().normalize()); a.mesh.lookAt(look); }
       if (hit) {
         if (hit.ghost) { arrows.splice(i, 1); if (a.mesh.parent) a.mesh.parent.remove(a.mesh); killPlayer('ghost'); return; }
-        if (hit.animal) { hurtAnimal(hit.animal, a); arrows.splice(i, 1); if (a.mesh.parent) a.mesh.parent.remove(a.mesh); continue; }
+        if (hit.animal) { hurtAnimal(hit.animal, a); if (a.atype === 'pierce' && (a.pierced || 0) < 2) { a.pierced = (a.pierced || 0) + 1; (a.hitSet = a.hitSet || new Set()).add(hit.animal); continue; } arrows.splice(i, 1); if (a.mesh.parent) a.mesh.parent.remove(a.mesh); continue; }
         if (hit.boss) { bossArrowHit(a, hit.head); arrows.splice(i, 1); a.mesh.parent && a.mesh.parent.remove(a.mesh); continue; }
-        registerHit(a, hit.t, hit.local, hit.pd); a.stuck = true; a.life = 3;
+        registerHit(a, hit.t, hit.local, hit.pd);
+        if (a.atype === 'pierce' && (a.pierced || 0) < 2) { a.pierced = (a.pierced || 0) + 1; continue; }
+        a.stuck = true; a.life = 3;
         const g2 = hit.t.g, dir = a.vel.clone().normalize();
         a.mesh.position.copy(a.pos); a.mesh.lookAt(a.pos.clone().add(dir)); g2.attach(a.mesh); // attach() keeps the world transform
         a.mesh.position.z = 0.2; // tip embedded in the face
@@ -1498,7 +1686,8 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   function registerHit(a, t, local, pd) {
     const ring = ringAt(pd, t.radius), bow = a.bow || BOWS[S.equipped];
     const payMul = S.done[LV.i] ? 0.5 : 1;
-    const val = Math.round(ring.val * bow.mul * (t.swing ? 1.5 : 1) * payMul);
+    let val = Math.round(ring.val * bow.mul * (t.swing ? 1.5 : 1) * payMul);
+    if (a.atype === 'gold') { val *= 2; burst(t.g.position.x, t.g.position.y, t.g.position.z, 0xffd84a, 16, 4); }
     earn(val); SFX.coin(); S.stats.hits++; if (ring.name === 'złoto') S.stats.golds++;
     if (!t.down) { t.down = true; t.fallT = 0; LV.left = Math.max(0, LV.left - 1); updLevelHud(); }
     if (a.atype === 'boom') {
@@ -1507,6 +1696,11 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
         o.down = true; o.fallT = 0; LV.left = Math.max(0, LV.left - 1); const v2 = Math.round(RINGS[RINGS.length - 1].val * bow.mul * payMul); earn(v2); popText(o.g.position.x, o.g.position.y + 0.8, o.g.position.z, '💥 +' + v2, '#ffd84a');
       }
       updLevelHud();
+    }
+    if (a.atype === 'storm') {
+      const arcs = targets.filter(o => !o.down && o !== t).map(o => ({ o, d: Math.hypot(o.g.position.x - t.g.position.x, o.g.position.z - t.g.position.z) })).filter(q => q.d < 9).sort((p1, q1) => p1.d - q1.d).slice(0, 2);
+      arcs.forEach(({ o }) => { o.down = true; o.fallT = 0; LV.left = Math.max(0, LV.left - 1); const v2 = Math.round(RINGS[RINGS.length - 1].val * bow.mul * payMul); earn(v2); popText(o.g.position.x, o.g.position.y + 0.8, o.g.position.z, '⚡ +' + v2, '#9fb4ff'); burst(o.g.position.x, o.g.position.y, o.g.position.z, 0x9fb4ff, 14, 4); });
+      if (arcs.length) { SFX.fall(); updLevelHud(); }
     }
     if (ring.name === 'złoto') SFX.hitGold(); else SFX.hitRing();
     const wp = new THREE.Vector3(t.g.position.x + local.x, t.g.position.y + local.y, t.g.position.z + 0.1);
@@ -1667,12 +1861,16 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     if (b.hp <= 0) { b.hp = 0; b.alive = false; b.dying = 0; b.drawT = 0; SFX.ko(); }
     updBossHp();
   }
+  let vampLast = -9999;
   function bossArrowHit(a, head) {
     const bow = a.bow, at = a.atype || 'normal'; let dmg = 14 * bow.mul * 0.5 * (head ? 2 : 1);
     if (at === 'ice') { boss.slowT = 3; burst(boss.x, boss.hitY, boss.z, 0x9fe8ff, 18, 4); }
     if (at === 'shock') { boss.stunT = 1.0; boss.drawT = 0; burst(boss.x, boss.hitY, boss.z, 0x7fe6ff, 22, 5); }
     if (at === 'poison') { boss.poisonT = 6; burst(boss.x, boss.hitY, boss.z, 0x6ad84a, 14, 3); }
     if (at === 'ruby') dmg *= 2;
+    if (at === 'pierce') dmg *= 1.4;
+    if (at === 'storm') { dmg *= 1.25; boss.stunT = Math.max(boss.stunT || 0, 0.5); boss.drawT = 0; burst(boss.x, boss.hitY, boss.z, 0x9fb4ff, 22, 5); SFX.fall(); }
+    if (at === 'vamp' && P.hearts < (P.maxHearts || 3) && Date.now() - vampLast > 3000) { vampLast = Date.now(); P.hearts++; updHearts(); popText(P.x, P.y + 2.4, P.z, '+❤️', '#ff7a9a'); burst(boss.x, boss.hitY, boss.z, 0xc41428, 14, 3); }
     if (bow.ability === 'explode' || at === 'boom') { dmg *= 1.5; burst(boss.x, boss.y + 1.2 * boss.def.scale, boss.z, 0x7fe6ff, 26, 6); burst(boss.x, boss.y + 1.2 * boss.def.scale, boss.z, 0xffffff, 12, 4); SFX.fall(); }
     if (bow.ability === 'fire' || at === 'fire') boss.burnT = 3;
     damageBoss(Math.round(dmg), head, false);
@@ -1894,11 +2092,13 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   function nearestZone() {
     const dShop = Math.hypot(P.x - SHOP.x, P.z - SHOP.z), dPortal = Math.hypot(P.x - PORTAL.x, P.z - PORTAL.z), dBoard = Math.hypot(P.x - BOARD.x, P.z - (BOARD.z - 0.4)), dBench = Math.hypot(P.x - BENCH.x, P.z - BENCH.z);
     if (dShop < 2.8) return 'shop'; if (dBench < 2.8) return 'bench'; if (dPortal < 2.8) return 'portal'; if (dBoard < 2.8) return 'board';
-    if (Math.hypot(P.x - TOURNEY.x, P.z - (TOURNEY.z - 0.4)) < 2.8) return 'tourney'; if (Math.hypot(P.x - BED.x, P.z - BED.z) < 2.4) return 'bed'; if (Math.hypot(P.x - WARD.x, P.z - WARD.z) < 2.8) return 'ward'; return null;
+    if (Math.hypot(P.x - TOURNEY.x, P.z - (TOURNEY.z - 0.4)) < 2.8) return 'tourney'; if (Math.hypot(P.x - BED.x, P.z - BED.z) < 2.4) return 'bed'; if (inCabin(P.x, P.z) && Math.hypot(P.x - KIT.x, P.z - KIT.z) < 2.3) return 'kitchen'; if (Math.hypot(P.x - WARD.x, P.z - WARD.z) < 2.8) return 'ward'; return null;
   }
-  const ABILITY_TXT = { triple: 'Strzela 3 strzałami naraz', fire: 'Podpala bossa (obrażenia przez 3 s)', explode: 'Wybuch: +50% obrażeń bossowi', seek: 'Strzały same skręcają do celu' };
+  const ABILITY_TXT = { triple: 'Strzela 3 strzałami naraz', fire: 'Podpala bossa (obrażenia przez 3 s)', explode: 'Wybuch: +50% obrażeń bossowi', seek: 'Strzały same skręcają do celu', hunt: 'Zwierzęta dają 2× łupów i mięsa' };
+  const CRAFT_SEQ = BOWS.map((b, i) => b.craft ? i : -1).filter(i => i >= 0);
+  const craftPrevOk = i => { const k = CRAFT_SEQ.indexOf(i); return k <= 0 || !!S.owned[CRAFT_SEQ[k - 1]]; };
   function updRes() { $('resPill').innerHTML = Object.keys(RES_ICON).map(k => `<span title="${RES_NAME[k]}">${RES_ICON[k]} ${S.res[k] || 0}</span>`).join(''); }
-  function canCraft(i) { const b = BOWS[i]; if (!b.craft || S.owned[i]) return false; if (i > 6 && !S.owned[i - 1]) return false; return Object.keys(b.craft).every(k => (S.res[k] || 0) >= b.craft[k]); }
+  function canCraft(i) { const b = BOWS[i]; if (!b.craft || S.owned[i]) return false; if (!craftPrevOk(i)) return false; return Object.keys(b.craft).every(k => (S.res[k] || 0) >= b.craft[k]); }
   function craftBow(i) {
     if (!canCraft(i)) { SFX.no(); return false; }
     const b = BOWS[i]; for (const k in b.craft) S.res[k] -= b.craft[k];
@@ -1913,7 +2113,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const bh = document.createElement('p'); bh.innerHTML = '<b>Łuki</b>'; bh.style.margin = '10px 0 4px'; $('craftlist').appendChild(bh);
     BOWS.forEach((b, i) => {
       if (!b.craft) return;
-      const owned = S.owned[i], prevOk = i === 6 || S.owned[i - 1];
+      const owned = S.owned[i], prevOk = craftPrevOk(i);
       const cost = Object.keys(b.craft).map(k => `<span class="cost ${(S.res[k] || 0) >= b.craft[k] ? 'ok' : 'no'}">${RES_ICON[k]} ${S.res[k] || 0}/${b.craft[k]}</span>`).join('');
       const row = document.createElement('div'); row.className = 'bowrow';
       row.innerHTML = `<div class="ic" style="background:${owned ? '#EEF6FF' : '#F2F2F2'}">${b.icon}</div><div class="tx"><b>${b.name}</b><small>${b.ability ? '<span style="color:#7a2cff">★ ' + ABILITY_TXT[b.ability] + '</span><br>' : ''}${owned ? 'Masz · naciąg ' + b.draw.toFixed(2) + 's · mnożnik x' + b.mul.toFixed(2) : prevOk ? cost : 'Najpierw stwórz poprzedni łuk'}</small></div>`;
@@ -1961,9 +2161,14 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     poison: { name: 'Trująca', icon: '☠️', cost: { wood: 2, feather: 2, hide: 1 }, trail: 0x6ad84a, txt: 'Trucizna: 2 obrażenia na sekundę przez 6 s' },
     precise: { name: 'Precyzyjna', icon: '🎯', cost: { wood: 3, feather: 3, iron: 1 }, trail: 0xffffff, txt: 'Leci o 25% szybciej i prawie prosto (mało opada)' },
     split: { name: 'Rozdzielająca', icon: '🔱', cost: { wood: 3, feather: 4, obsidian: 1 }, trail: 0xc58cff, txt: 'Po chwili lotu rozdziela się na 3 strzały' },
-    ruby: { name: 'Rubinowa', icon: '🔴', cost: { wood: 2, feather: 2, ruby: 1 }, trail: 0xff3050, txt: 'Podwójne obrażenia dla przeciwników i zwierząt' }
+    ruby: { name: 'Rubinowa', icon: '🔴', cost: { wood: 2, feather: 2, ruby: 1 }, trail: 0xff3050, txt: 'Podwójne obrażenia dla przeciwników i zwierząt' },
+    gold: { name: 'Złota', icon: '🪙', cost: { wood: 2, feather: 2, gold: 2 }, trail: 0xffd84a, txt: 'Tarcze płacą 2× więcej kasy' },
+    hunter: { name: 'Łowiecka', icon: '🏹', cost: { wood: 2, feather: 2, hide: 2 }, trail: 0xb98a5a, txt: 'Zwierzęta dają 2× mięsa i skór' },
+    pierce: { name: 'Przebijająca', icon: '🗡️', cost: { wood: 2, iron: 2, feather: 2, obsidian: 1 }, trail: 0xcfd6e0, txt: 'Przebija do 3 tarcz lub zwierząt, +40% obrażeń przeciwnika' },
+    vamp: { name: 'Wampirza', icon: '🩸', cost: { wood: 2, feather: 3, ruby: 2, hide: 1 }, trail: 0xc41428, txt: 'Trafienie przeciwnika leczy 1 serce (co 3 s)' },
+    storm: { name: 'Burzowa', icon: '⛈️', cost: { iron: 2, gold: 1, crystal: 1, feather: 3 }, trail: 0x9fb4ff, txt: 'Piorun: +25% obrażeń i krótki paraliż, na strzelnicy razi 2 sąsiednie tarcze' }
   };
-  const ARROW_ORDER = ['normal', 'fire', 'ice', 'boom', 'shock', 'poison', 'precise', 'split', 'ruby'];
+  const ARROW_ORDER = ['normal', 'fire', 'ice', 'boom', 'shock', 'poison', 'precise', 'split', 'ruby', 'gold', 'hunter', 'pierce', 'vamp', 'storm'];
   function updArrowPill() { const t = ARROW_TYPES[S.arrowType] || ARROW_TYPES.normal; $('atypePill').textContent = t.icon + ' ' + t.name + (S.arrowType !== 'normal' ? ' ×' + (S.quiver[S.arrowType] || 0) : '') + (isTouch ? '' : ' (Q)'); }
   function cycleArrow() {
     let i = ARROW_ORDER.indexOf(S.arrowType);
@@ -1981,12 +2186,15 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     if (!$('tourney').classList.contains('hide')) { closePanel('tourney'); return; }
     if (!$('ward').classList.contains('hide')) { closePanel('ward'); return; }
     if (!$('trails').classList.contains('hide')) { closePanel('trails'); return; }
+    if (!$('kitchen').classList.contains('hide')) { closePanel('kitchen'); return; }
     if (paused || bossMode) return;
+    if (nearFire(2.9)) { cookAtFire(); return; }
     if (Math.hypot(P.x - SIGN.x, P.z - SIGN.z) < 3.6) { renderTrails(); openPanel('trails'); return; }
     const z = nearestZone();
     if (z === 'shop') openShop();
     else if (z === 'bench') openCraft();
     else if (z === 'bed') sleep();
+    else if (z === 'kitchen') { renderKitchen(); openPanel('kitchen'); }
     else if (z === 'tourney') { renderTourney(); openPanel('tourney'); }
     else if (z === 'ward') { renderWard(); openPanel('ward'); }
     else if (z === 'board') openBoard();
@@ -2054,9 +2262,9 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     f -= joy.y; s2 += joy.x;
     const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
     let mx = fx * f + rx * s2, mz = fz * f + rz * s2; const ml = Math.hypot(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
-    P.sprinting = !drawing && f > 0.3 && (keys.ShiftLeft || keys.ShiftRight || Math.hypot(joy.x, joy.y) > 0.95);
+    P.sprinting = !drawing && S.hunger > 0 && f > 0.3 && (keys.ShiftLeft || keys.ShiftRight || Math.hypot(joy.x, joy.y) > 0.95);
     P.stunT = Math.max(0, (P.stunT || 0) - dt);
-    const SPEED = (drawing ? 2.6 : P.sprinting ? 8.4 : 5.4) * (P.stunT > 0 ? 0.3 : 1) * (P.inWater ? 0.62 : 1) * ((S.lives || 0) <= 0 ? 0.8 : 1), k = 1 - Math.exp(-(P.y - groundH(P.x, P.z) > 0.05 ? 4 : 10) * dt);
+    const SPEED = (drawing ? 2.6 : P.sprinting ? 8.4 : 5.4) * (P.stunT > 0 ? 0.3 : 1) * (P.inWater ? 0.62 : 1) * ((S.lives || 0) <= 0 ? 0.8 : 1) * (S.hunger <= 0 ? 0.7 : 1), k = 1 - Math.exp(-(P.y - groundH(P.x, P.z) > 0.05 ? 4 : 10) * dt);
     const jumpIn = keys.Space || jumpHeld;
     const floor0 = groundH(P.x, P.z);
     if (jumpIn && !P.jumpLock && P.y <= floor0 + 0.001) { P.vy = 7.6; P.jumpLock = true; SFX.jump(); }
@@ -2087,13 +2295,16 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     P.hurtT = Math.max(0, P.hurtT - dt);
     hurtFlashT = Math.max(0, hurtFlashT - dt * 2.4); $('hurtFlash').style.opacity = hurtFlashT > 0 ? Math.min(1, hurtFlashT * 2) : 0;
     if (drawing) { drawT += dt; const bow = BOWS[activeBowIdx()]; $('powerI').style.width = Math.min(100, drawT / bow.draw * 100) + '%'; if (fpArrowNock) fpArrowNock.visible = true; }
-    updateTargets(dt, T); arrowStep(dt); if (bossMode) bossStep(dt, T); else levelCheck(dt); updateTraj(); nodeStep(dt); swingStep(dt); animalStep(dt, T); natureStep(dt, T); ghostStep(dt, T); updCompass();
+    updateTargets(dt, T); arrowStep(dt); if (bossMode) bossStep(dt, T); else levelCheck(dt); updateTraj(); nodeStep(dt); swingStep(dt); animalStep(dt, T); natureStep(dt, T); ghostStep(dt, T); updCompass(); fireStep(dt, T); hungerStep(dt);
+    { const fb = $('fireBtn'), show = (P.zone === 'forest' || P.zone === 'mountain') && !inCabin(P.x, P.z) && !bossMode; if ((fb.style.display !== 'none') !== show) fb.style.display = show ? '' : 'none'; }
     const sb = $('shootBtn'), lbl = P.zone === 'forest' ? 'Uderz' : 'Strzel'; if (sb.textContent !== lbl) sb.textContent = lbl;
     for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.life -= dt; p.vy -= 10 * dt; p.m.position.x += p.vx * dt; p.m.position.y += p.vy * dt; p.m.position.z += p.vz * dt; p.m.material.opacity = Math.max(0, p.life * 2); p.m.material.transparent = true; if (p.life <= 0) { scene.remove(p.m); parts.splice(i, 1); } }
     for (let i = floats.length - 1; i >= 0; i--) { const f2 = floats[i]; f2.life -= dt; f2.s.position.y += f2.vy * dt; f2.s.material.opacity = Math.min(1, f2.life * 1.6); if (f2.life <= 0) { scene.remove(f2.s); f2.s.material.map.dispose(); f2.s.material.dispose(); floats.splice(i, 1); } }
     const z = nearestZone();
     const near = (P.zone === 'forest' || P.zone === 'mountain') ? findNode() : null;
     if (near) { $('interact').style.display = 'block'; const y = near.def.yield; $('interact').textContent = (isTouch ? 'Uderz: ' : 'LPM: ') + near.def.label + ' ' + Object.keys(y).map(k => '+' + y[k] + RES_ICON[k]).join(' ') + '  (' + near.hp + '/' + near.def.hp + ')'; $('intBtn').style.display = 'none'; }
+    else if (!bossMode && nearFire(2.9)) { $('interact').style.display = 'block'; $('interact').textContent = (isTouch ? 'Wejdź: ' : 'E: ') + 'upiecz mięso 🥩' + (S.food.meat || 0); $('intBtn').style.display = isTouch ? 'block' : 'none'; }
+    else if (!bossMode && z === 'kitchen') { $('interact').style.display = 'block'; $('interact').textContent = (isTouch ? 'Wejdź: ' : 'E: ') + 'kuchnia (gotuj i jedz)'; $('intBtn').style.display = isTouch ? 'block' : 'none'; }
     else if (!bossMode && Math.hypot(P.x - SIGN.x, P.z - SIGN.z) < 3.6) { $('interact').style.display = 'block'; $('interact').textContent = (isTouch ? 'Wejdź: ' : 'E: ') + 'mapa szlaków i kompas'; $('intBtn').style.display = isTouch ? 'block' : 'none'; }
     else if (!bossMode && z === 'bed') { $('interact').style.display = 'block'; $('interact').textContent = (isTouch ? 'Wejdź: ' : 'E: ') + 'śpij do rana' + (ENV.fBase < 0.5 ? ' (bonus +25% kasy)' : ''); $('intBtn').style.display = isTouch ? 'block' : 'none'; }
     else if (!bossMode && z && P.zone === 'bunker') { $('interact').style.display = 'block'; $('interact').textContent = z === 'shop' ? (isTouch ? 'Wejdź: sklep z łukami' : 'E: sklep z łukami') : z === 'bench' ? (isTouch ? 'Wejdź: warsztat (łuki i strzały)' : 'E: warsztat (łuki i strzały)') : z === 'tourney' ? (isTouch ? 'Wejdź: turniej i ranking' : 'E: turniej i ranking') : z === 'ward' ? (isTouch ? 'Wejdź: garderoba' : 'E: garderoba') : z === 'board' ? (isTouch ? 'Wejdź: wybór poziomu' : 'E: wybór poziomu') : (allBowsOwned() ? (isTouch ? 'Wejdź: wybierz bossa' : 'E: wybierz bossa') : (isTouch ? 'Zablokowane: kup wszystkie łuki' : 'Zablokowane: kup wszystkie łuki')); $('intBtn').style.display = isTouch ? 'block' : 'none'; }
@@ -2122,13 +2333,14 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     if (drawing) { const pull = Math.min(1, drawT / BOWS[activeBowIdx()].draw); u.arms[1].rotation.x = -1.5 - P.pitch * 0.9; u.arms[0].rotation.x = -1.5 - P.pitch * 0.9 + pull * 0.35; u.arms[0].rotation.z = -0.5 * pull; }
     else if (swingT > 0) { const k = 1 - swingT / 0.34; u.arms[0].rotation.x = -2.7 + k * 2.6; }
     else if (!forest && P.zone !== 'bunker' && speed < 0.2) u.arms[1].rotation.x = -0.35;
-    toolMesh.visible = forest; if (handBow3p) handBow3p.visible = !forest;
+    const insideCab = inCabin(P.x, P.z);
+    toolMesh.visible = forest && !insideCab; if (handBow3p) handBow3p.visible = !forest && !insideCab;
     recoilT = Math.max(0, recoilT - dt * 5);
     const aimZone = P.zone === 'range' || P.zone === 'boss' || P.zone === 'forest' || P.zone === 'mountain';
-    const wantFP = aimZone && (drawing || aimHoldT > 0 || S.fpLock);
+    const wantFP = insideCab || (aimZone && (drawing || aimHoldT > 0 || S.fpLock));
     aimT += ((wantFP ? 1 : 0) - aimT) * clamp(dt * 9, 0, 1); if (!(dt > 0)) aimT = wantFP ? 1 : 0;
     const e = aimT * aimT * (3 - 2 * aimT);
-    avatar.visible = e < 0.7; fpRig.visible = e >= 0.7;
+    avatar.visible = e < 0.7; fpRig.visible = e >= 0.7 && !insideCab;
     fpRig.position.set(0, -recoilT * 0.05, recoilT * 0.08);
     if (fpBow) { const pull = drawing ? Math.min(1, drawT / BOWS[activeBowIdx()].draw) : 0; fpBow.position.copy(fpBowBase); fpBow.position.z += pull * 0.08; const str = fpBow.getObjectByName('string'); if (str) str.position.x = 0.1 - pull * 0.12; if (fpArrowNock) fpArrowNock.position.set(0.1 - pull * 0.12, -0.02, -0.25); }
     // camera orbits a point above the right shoulder; screen centre = aim ray
@@ -2141,11 +2353,12 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const tx = piv.x - dir.x * camDistS, ty = piv.y - dir.y * camDistS + 0.55, tz = piv.z - dir.z * camDistS;
     camera.position.set(tx + (P.x - tx) * e, ty + (P.y + 1.62 - ty) * e, tz + (P.z - tz) * e);
     camera.rotation.set(P.pitch, P.yaw, 0);
+    if (insideCab && e > 0.5) { const bobK = Math.min(1, Math.hypot(P.vx, P.vz) / 5); camera.position.y += Math.abs(Math.sin(u.walk * 2)) * 0.05 * bobK - 0.025 * bobK; camera.position.x += Math.cos(u.walk) * 0.015 * bobK * Math.cos(P.yaw); camera.position.z -= Math.cos(u.walk) * 0.015 * bobK * Math.sin(P.yaw); camera.rotation.z = Math.sin(u.walk) * 0.01 * bobK; } else camera.rotation.z = 0;
     { const cp = camera.position; sky.position.copy(cp); stars.position.copy(cp);
       sunDisc.position.set(cp.x - 130, cp.y + 95, cp.z - 170); sunDisc.lookAt(cp); sunHalo.position.copy(sunDisc.position); sunHalo.lookAt(cp);
       moon.position.set(cp.x + 140, cp.y + 110, cp.z + 150); moon.lookAt(cp); }
-    camera.fov = 66 + (P.sprinting ? 5 : 0) + (drawing ? -7 * Math.min(1, drawT / BOWS[activeBowIdx()].draw) : 0); camera.updateProjectionMatrix();
-    $('cross').style.display = (P.zone === 'range' || P.zone === 'boss' || ((P.zone === 'forest' || P.zone === 'mountain') && !findNode())) ? 'block' : 'none';
+    camera.fov = (insideCab ? 76 : 66) + (P.sprinting ? 5 : 0) + (drawing ? -7 * Math.min(1, drawT / BOWS[activeBowIdx()].draw) : 0); camera.updateProjectionMatrix();
+    $('cross').style.display = !insideCab && (P.zone === 'range' || P.zone === 'boss' || ((P.zone === 'forest' || P.zone === 'mountain') && !findNode())) ? 'block' : 'none';
     envApply(dt);
     sun.position.set(P.x + 25, 45, P.z + 15); sun.target.position.set(P.x, 0, P.z);
     renderer.render(scene, camera);
@@ -2155,22 +2368,22 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   let T = 0;
   function startGame() {
     state = 'play'; paused = false; $('menu').classList.add('hide');
-    setFpBow(activeBowIdx()); setAvatarBow(activeBowIdx()); updBowPill(); updCash(); setPortalUnlocked(allBowsOwned()); updLevelHud(); updRes(); applySkin(S.skin); updArrowPill(); updTrophies(); updLives();
+    setFpBow(activeBowIdx()); setAvatarBow(activeBowIdx()); updBowPill(); updCash(); setPortalUnlocked(allBowsOwned()); updLevelHud(); updRes(); applySkin(S.skin); updArrowPill(); updTrophies(); updLives(); updFood();
     P.x = BUNK.x; P.z = BUNK.z; P.yaw = 0; P.pitch = 0; P.camT = 0;
-    tip(isTouch ? 'Przód bunkra: strzelnica. Tylne drzwi: las. Joystick do końca = bieg, Skok = skok.' : 'Kliknij, żeby sterować myszką. WASD: ruch, Shift: bieg, Spacja: skok, LPM: strzał/uderzenie, E: sklep i warsztat, V: widok.');
+    tip(isTouch ? 'Przód bunkra: strzelnica. Tylne drzwi: las. Joystick do końca = bieg, Skok = skok. Dotknij paska głodu, żeby zjeść.' : 'Kliknij, żeby sterować myszką. WASD: ruch, Shift: bieg, Spacja: skok, LPM: strzał/uderzenie, E: sklep, warsztat, kuchnia, F: jedz, G: ognisko, V: widok.');
   }
-  function togglePause() { if (state !== 'play') return; if ($('shop').classList.contains('hide') === false || $('board').classList.contains('hide') === false || $('craft').classList.contains('hide') === false || $('tourney').classList.contains('hide') === false || $('ward').classList.contains('hide') === false || $('trails').classList.contains('hide') === false || $('bossSelect').classList.contains('hide') === false) return; if (!$('pause').classList.contains('hide')) { $('pause').classList.add('hide'); paused = false; } else if ($('result').classList.contains('hide')) { renderStats(); $('pause').classList.remove('hide'); paused = true; drawing = false; swingHeld = false; $('power').style.display = 'none'; if (document.pointerLockElement) document.exitPointerLock(); } }
+  function togglePause() { if (state !== 'play') return; if ($('shop').classList.contains('hide') === false || $('board').classList.contains('hide') === false || $('craft').classList.contains('hide') === false || $('tourney').classList.contains('hide') === false || $('ward').classList.contains('hide') === false || $('trails').classList.contains('hide') === false || $('kitchen').classList.contains('hide') === false || $('bossSelect').classList.contains('hide') === false) return; if (!$('pause').classList.contains('hide')) { $('pause').classList.add('hide'); paused = false; } else if ($('result').classList.contains('hide')) { renderStats(); $('pause').classList.remove('hide'); paused = true; drawing = false; swingHeld = false; $('power').style.display = 'none'; if (document.pointerLockElement) document.exitPointerLock(); } }
   function toggleSound() { muted = !muted; $('soundBtn').textContent = muted ? '🔇' : '🔊'; }
   $('startBtn').addEventListener('click', () => { ac(); startGame(); });
   $('newBtn').addEventListener('click', () => { if (confirm('Na pewno skasować cały postęp?')) { try { localStorage.removeItem(SAVE); } catch (e) {} location.reload(); } });
   $('pauseBtn').addEventListener('click', togglePause); $('resumeBtn').addEventListener('click', togglePause);
   $('menuBtn').addEventListener('click', () => { $('pause').classList.add('hide'); paused = false; state = 'menu'; $('menu').classList.remove('hide'); if (document.pointerLockElement) document.exitPointerLock(); });
   $('soundBtn').addEventListener('click', toggleSound);
-  $('shopClose').addEventListener('click', closeShop); $('bossClose').addEventListener('click', closeBossSelect); $('boardClose').addEventListener('click', closeBoard); $('craftClose').addEventListener('click', closeCraft); $('trailsClose').addEventListener('click', () => closePanel('trails')); $('tourneyClose').addEventListener('click', () => closePanel('tourney')); $('wardClose').addEventListener('click', () => closePanel('ward')); $('atypePill').addEventListener('click', cycleArrow);
+  $('shopClose').addEventListener('click', closeShop); $('bossClose').addEventListener('click', closeBossSelect); $('boardClose').addEventListener('click', closeBoard); $('craftClose').addEventListener('click', closeCraft); $('trailsClose').addEventListener('click', () => closePanel('trails')); $('kitchenClose').addEventListener('click', () => closePanel('kitchen')); $('foodPill').addEventListener('click', eatBest); $('fireBtn').addEventListener('click', placeFire); $('tourneyClose').addEventListener('click', () => closePanel('tourney')); $('wardClose').addEventListener('click', () => closePanel('ward')); $('atypePill').addEventListener('click', cycleArrow);
   $('aimBtn').style.opacity = S.aim ? 1 : 0.4;
   function renderStats() {
     const st = S.stats, acc = st.shots ? Math.round(st.hits / st.shots * 100) : 0, nb = S.owned.filter(Boolean).length;
-    $('statsBox').innerHTML = [['🏹 Strzały', st.shots], ['🎯 Celność', acc + '%'], ['🟡 Dziesiątki', st.golds], ['💀 Trafienia w głowę', st.headshots], ['🌲 Ścięte drzewa', st.trees], ['🪨 Rozbite skały', st.rocks], ['🔨 Stworzone łuki', st.crafted], ['🏆 Pokonani bossowie', st.bosses], ['⛰️ Zdobyte szczyty', S.peaks.filter(Boolean).length + '/4'], ['💀 Śmierci', st.deaths || 0], ['🎒 Posiadane łuki', nb + '/' + BOWS.length], ['📍 Poziomy', S.done.filter(Boolean).length + '/' + LEVELS.length]].map(([k, v]) => `<div>${k}: <b>${v}</b></div>`).join('');
+    $('statsBox').innerHTML = [['🏹 Strzały', st.shots], ['🎯 Celność', acc + '%'], ['🟡 Dziesiątki', st.golds], ['💀 Trafienia w głowę', st.headshots], ['🌲 Ścięte drzewa', st.trees], ['🪨 Rozbite skały', st.rocks], ['🔨 Stworzone łuki', st.crafted], ['🏆 Pokonani bossowie', st.bosses], ['🍖 Zjedzone posiłki', st.meals || 0], ['🔥 Upieczone porcje', st.cooked || 0], ['⛰️ Zdobyte szczyty', S.peaks.filter(Boolean).length + '/4'], ['💀 Śmierci', st.deaths || 0], ['🎒 Posiadane łuki', nb + '/' + BOWS.length], ['📍 Poziomy', S.done.filter(Boolean).length + '/' + LEVELS.length]].map(([k, v]) => `<div>${k}: <b>${v}</b></div>`).join('');
   }
   function toggleView() { S.fpLock = !S.fpLock; save(); $('viewBtn').style.opacity = S.fpLock ? 1 : 0.55; tip(S.fpLock ? 'Na strzelnicy zawsze widok z oczu' : 'Widok z oczu tylko przy celowaniu'); }
   $('viewBtn').style.opacity = S.fpLock ? 1 : 0.55; $('viewBtn').addEventListener('click', toggleView);
@@ -2207,6 +2420,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     ringAt, fmtM, collide, BOWS, get S(){return S;}, save, earn, allBowsOwned,
     get P(){return P;}, step, targets, arrows, fireArrow, arrowStep, registerHit,
     killPlayer, respawn, updLives, ghostStep, ghostAt, ghostInReach, GHOSTS, spawnGhost, wolfAnger, wolfRageStep, wolfRageEnd, get wolfRage(){return wolfRage;}, get dying(){return dying;}, inCabin, updCompass, renderTrails, natureStep, playerHurt,
+    keys, joy, FOOD, RECIPES, FIRES, KIT, kitchenFx, cabinGlow, CRAFT_SEQ, BEST_BOW, giveItem, eatItem, eatBest, hungerStep, updFood, placeFire, cookAtFire, nearFire, fireNear, fireStep, addFire, removeFire, cookRecipe, renderKitchen, ARROW_ORDER, craftPrevOk, get vampLast(){return vampLast;}, set vampLast(v){vampLast=v;},
     solids, CHIM, fireBoxes, get cabinLight(){return cabinLight;}, get fireLight(){return fireLight;},
     groundH, MOUNT, PEAKS, LAKES, CLIFF, WF, lakeAt, inWater, trailDist, cliffH, natH, SIGN, CAB, BED, sleep, applySleep, updTrophies, trophyMeshes, roofH, get sleeping(){return sleeping;},
     RIVALS, rankResult, rankName, startFight, renderTourney, SKINS, applySkin, renderWard, ARROW_TYPES, cycleArrow, craftArrows, ANIMALS, animalStep, animalHit, hurtAnimal, spawnAnimal, ENV, envStep, envApply, dayFactor, get fireballs(){return fireballs;}, dragonFire, avatar, hatGroups, get lastFight(){return lastFight;},
