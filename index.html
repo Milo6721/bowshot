@@ -1654,7 +1654,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   function wolfAnger(a) {
     popText(a.x, groundH(a.x, a.z) + 2.4, a.z, '🐺 Nie do zabicia!', '#ff8a8a');
     if (wolfRage || bossMode) return;
-    wolfRage = { a, t: 0, safeT: 0 }; a.mode = 'rage'; ENV.darkTarget = 1;
+    wolfRage = { a, t: 0, safeT: 0, side: 1, stuck: 0, detourT: 0 }; a.mode = 'rage'; ENV.darkTarget = 1;
     banner('🐺 Wilk!', 'Nie da się go zabić. Uciekaj do bunkra albo domku!', 3600); SFX.howl(); tip('Biegnij (Shift) do bunkra albo do domku, tam wilk nie wejdzie');
   }
   function wolfRageEnd(why) {
@@ -1668,8 +1668,10 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const dx = P.x - a.x, dz = P.z - a.z, dist = Math.hypot(dx, dz) || 0.001;
     const safe = P.zone === 'bunker' || inCabin(P.x, P.z) || bossMode || P.zone === 'cave';
     const spd = 6.6 + 3.4 * (1 - Math.exp(-W.t / 6)), sc = 1 + 1.8 * (1 - Math.exp(-W.t / 5));
-    let dh = Math.atan2(dx, dz) - a.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); a.h += clamp(dh, -dt * 8, dt * 8);
+    if (W.detourT > 0) W.detourT -= dt;
+    let dh = Math.atan2(dx, dz) + (W.detourT > 0 ? W.side * 1.15 : 0) - a.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); a.h += clamp(dh, -dt * 8, dt * 8);
     const nx = a.x + Math.sin(a.h) * spd * dt, nz = a.z + Math.cos(a.h) * spd * dt, c = collide(nx, nz, 0.6);
+    { const mvd = Math.hypot(c.x - a.x, c.z - a.z); if (dist > 3 && mvd < spd * dt * 0.45) { W.stuck += dt; if (W.stuck > 0.12) { W.stuck = 0; W.detourT = 0.55; W.side = -W.side; } } else W.stuck = Math.max(0, W.stuck - dt); } // a tree or rock in the way: swing around it
     if (!inBunker(c.x, c.z) && !inCabin(c.x, c.z)) { a.x = c.x; a.z = c.z; }
     a.speed = spd; a.walk += dt * spd * 2.2; const sw = Math.sin(a.walk) * 0.85;
     m.userData.legs.forEach((l, k) => { l.rotation.x = (k === 0 || k === 3) ? sw : -sw; });
