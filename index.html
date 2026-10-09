@@ -1453,7 +1453,7 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
     const bk = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.2, 0.35, 8), STD(0x8a8f99, { metalness: 0.5 })); bk.position.set(-2.2, 0.18, 1.8); g.add(bk);
     const ss = textSprite('STAJNIA 🐴', '#ffffff', 42, '#8a5a2e'); ss.position.set(-1.7, 4.2, 0); ss.scale.multiplyScalar(0.85); g.add(ss);
     const fence = (x0, z0, x1, z1) => { const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 1.5)), ang = Math.atan2(x1 - x0, z1 - z0); for (let k = 0; k <= n; k++) { const q = k / n; box(g, 0.18, 1.3, 0.18, dark, x0 + (x1 - x0) * q, 0.65, z0 + (z1 - z0) * q, false); } [0.5, 1.0].forEach(y => { const r2 = box(g, 0.1, 0.1, len, rail, (x0 + x1) / 2, y, (z0 + z1) / 2, false); r2.rotation.y = ang; }); addSolid(STABLE.x + (x0 + x1) / 2, STABLE.z + (z0 + z1) / 2, Math.abs(x1 - x0) / 2 + 0.12, Math.abs(z1 - z0) / 2 + 0.12, 'fence', 1.2); };
-    fence(-0.1, -3.3, 4.4, -3.3); fence(-0.1, 3.3, 4.4, 3.3); fence(4.4, -3.3, 4.4, -1.4); fence(4.4, 1.4, 4.4, 3.3);
+    fence(3.0, -3.3, 4.4, -3.3); fence(-0.1, 3.3, 4.4, 3.3); fence(4.4, -3.3, 4.4, -1.4); fence(4.4, 1.4, 4.4, 3.3);
     addSolid(STABLE.x - 3.3, STABLE.z, 0.2, 2.7, 'wall', 3); addSolid(STABLE.x - 1.7, STABLE.z - 2.6, 1.7, 0.2, 'wall', 3); addSolid(STABLE.x - 1.7, STABLE.z + 2.6, 1.7, 0.2, 'wall', 3);
     const d = new THREE.Group(); d.position.set(DOGHOUSE.x, 0, DOGHOUSE.z); d.rotation.y = 0.35; scene.add(d);
     const plank = STD(0xb07a42, { map: woodTex }), trimW = STD(0xf3ead8), dark0 = new THREE.MeshBasicMaterial({ color: 0x15100a });
@@ -1917,17 +1917,56 @@ canvas#c{display:block;width:100%;height:100%;touch-action:none}
   }
   function dismountHorse(auto) { if (!P.mounted) return; P.mounted = false; HORSE.x = P.x; HORSE.z = P.z; HORSE.h = P.yaw + Math.PI; HORSE.state = 'idle'; HORSE.mesh.position.set(HORSE.x, groundH(HORSE.x, HORSE.z), HORSE.z); if (auto) tip('Koń czeka przed wejściem'); }
   function whistle() { if (!S.horse || P.mounted || P.cave || bossMode || P.gliding) return false; HORSE.state = 'coming'; SFX.neigh(); tip('🐴 Koń biegnie do ciebie'); return true; }
+  // the homestead (stable pen, cabin, field) is one big obstacle: a called horse rounds its corners instead of pushing into it
+  const HOME_BLK = { x0: STABLE.x - 5.2, x1: CAB.x + CAB.hw + 5.5, z0: CAB.z - CAB.hd - 0.8, z1: CAB.z + CAB.hd + 13 };
+  function segHitsRect(ax, az, bx, bz, R) {
+    let t0 = 0, t1 = 1; const dx = bx - ax, dz = bz - az;
+    for (const [p0, d0, mn, mx] of [[ax, dx, R.x0, R.x1], [az, dz, R.z0, R.z1]]) {
+      if (Math.abs(d0) < 1e-9) { if (p0 <= mn || p0 >= mx) return false; }
+      else { let u0 = (mn - p0) / d0, u1 = (mx - p0) / d0; if (u0 > u1) { const q = u0; u0 = u1; u1 = q; } t0 = Math.max(t0, u0); t1 = Math.min(t1, u1); if (t0 >= t1) return false; }
+    }
+    return true;
+  }
+  function routeAround(x, z, tx, tz) {
+    const R = HOME_BLK, inside = (px, pz) => px > R.x0 && px < R.x1 && pz > R.z0 && pz < R.z1;
+    if (inside(tx, tz) || inside(x, z) || !segHitsRect(x, z, tx, tz, R)) return [tx, tz];
+    const m = 1.4, C = [[R.x0 - m, R.z0 - m], [R.x1 + m, R.z0 - m], [R.x1 + m, R.z1 + m], [R.x0 - m, R.z1 + m]], L = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    let best = null, bl = 1e9; const me = [x, z], tg = [tx, tz];
+    for (let i = 0; i < 4; i++) {
+      const c = C[i]; if (!segHitsRect(x, z, c[0], c[1], R) && !segHitsRect(c[0], c[1], tx, tz, R)) { const l = L(me, c) + L(c, tg); if (l < bl) { bl = l; best = c; } }
+      const c2 = C[(i + 1) % 4]; if (!segHitsRect(x, z, c[0], c[1], R) && !segHitsRect(c2[0], c2[1], tx, tz, R)) { const l = L(me, c) + L(c, c2) + L(c2, tg); if (l < bl) { bl = l; best = c; } }
+    }
+    return best || tg;
+  }
   function horseToggle() { if (state !== 'play' || paused || dying) return; if (P.mounted) dismountHorse(); else if (S.horse && Math.hypot(P.x - HORSE.x, P.z - HORSE.z) < 3.6) mountHorse(); else whistle(); }
   function horseStep(dt, T) {
     if (S.horseFedT > 0) S.horseFedT = Math.max(0, S.horseFedT - dt);
     const H = HORSE, m = H.mesh, u = m.userData; m.visible = !!S.horse && !bossMode;
     if (!S.horse) return;
     if (P.mounted && (inCabin(P.x, P.z) || P.zone === 'bunker' || P.cave || P.gliding || bossMode || dying)) dismountHorse(true);
-    if (P.mounted) { H.x = P.x; H.z = P.z; H.h = P.yaw + Math.PI; H.speed = Math.hypot(P.vx, P.vz); }
+    if (P.mounted) { H.x = P.x; H.z = P.z; H.h = P.yaw + Math.PI; H.speed = Math.hypot(P.vx, P.vz); H.ax = undefined; }
     else if (H.state === 'coming') {
       const dx = P.x - H.x, dz = P.z - H.z, d = Math.hypot(dx, dz);
-      if (d < 3 || P.cave) { H.state = 'idle'; H.speed = 0; }
-      else { let dh = Math.atan2(dx, dz) - H.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); H.h += clamp(dh, -dt * 6, dt * 6); const c = collide(H.x + Math.sin(H.h) * 11 * dt, H.z + Math.cos(H.h) * 11 * dt, 0.8); H.x = c.x; H.z = c.z; H.speed = 11; }
+      if (d < 3 || P.cave || inCabin(P.x, P.z) || P.zone === 'bunker') { H.state = 'idle'; H.speed = 0; H.ax = undefined; }
+      else {
+        if (H.ax === undefined) { H.ax = H.x; H.az = H.z; H.noProgT = 0; H.detourT = 0; H.stuck = 0; H.side = 1; }
+        if (Math.hypot(H.x - H.ax, H.z - H.az) > 2.5) { H.ax = H.x; H.az = H.z; H.noProgT = 0; } else H.noProgT += dt; // wedged = barely moved for 4 s (going around a building is fine)
+        let tx = P.x, tz = P.z; const gz = FOREST.z1 + 0.6;
+        if ((H.z < gz) !== (P.z < gz) && H.z > FOREST.z0 - 3 && P.z > FOREST.z0 - 3 && Math.abs(H.x) < FOREST.x1 + 2) { const dir = H.z < gz ? 1 : -1; if (Math.abs(H.x) > 1.0 || Math.abs(H.z - gz) > 3) { tx = 0; tz = gz - dir * 2.6; } else { tx = 0; tz = gz + dir * 4.5; } } // through the gate to the mountains, not into the fence
+        if (H.x > STABLE.x - 4.4 && H.x < STABLE.x + 4.6 && H.z > STABLE.z - 3.4 && H.z < STABLE.z + 3.4) { if (H.x < STABLE.x + 0.4) { tx = STABLE.x + 1.6; tz = STABLE.z; } else { tx = STABLE.x + 1.5; tz = STABLE.z - 5.4; } } // out of the shed and through the pen's gate
+        else if (H.x > HOME_BLK.x0 && H.x < HOME_BLK.x1 && H.z > HOME_BLK.z0 && H.z < HOME_BLK.z1) { if (H.x < CAB.x - CAB.hw - 0.5 && H.z < STABLE.z - 3.4) { tx = H.x; tz = HOME_BLK.z0 - 1.3; } } // south of the pen: leave the homestead southwards
+        else { const w = routeAround(H.x, H.z, tx, tz); tx = w[0]; tz = w[1]; }
+        if (H.detourT > 0) H.detourT -= dt;
+        let dh = Math.atan2(tx - H.x, tz - H.z) + (H.detourT > 0 ? H.side * 1.1 : 0) - H.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); H.h += clamp(dh, -dt * 6, dt * 6);
+        const c = collide(H.x + Math.sin(H.h) * 11 * dt, H.z + Math.cos(H.h) * 11 * dt, 0.8), mv = Math.hypot(c.x - H.x, c.z - H.z);
+        if (mv < 11 * dt * 0.45) { H.stuck += dt; if (H.stuck > 0.15) { H.stuck = 0; H.detourT = 0.6; H.side = -H.side; } } else H.stuck = Math.max(0, H.stuck - dt);
+        H.x = c.x; H.z = c.z; H.speed = 11;
+        if (H.noProgT > 4) { // wedged for good: gallop in from the side nearest to where the horse was
+          const a0 = Math.atan2(H.x - P.x, H.z - P.z); let done = false;
+          for (let k = 0; k < 12 && !done; k++) { const ang = a0 + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.52, x = P.x + Math.sin(ang) * 7, z = P.z + Math.cos(ang) * 7, q = collide(x, z, 0.9); if (Math.hypot(q.x - x, q.z - z) < 0.05 && !lakeAt(x, z) && !inCabin(x, z) && !inBunker(x, z)) { trailPuff(new THREE.Vector3(H.x, groundH(H.x, H.z) + 0.5, H.z), 0xcdbb99); H.x = x; H.z = z; done = true; } }
+          H.ax = undefined;
+        }
+      }
     } else H.speed = 0;
     m.position.set(H.x, P.mounted ? P.y : groundH(H.x, H.z), H.z); m.rotation.y = H.h;
     H.walk += dt * H.speed * 1.3; const sw = Math.sin(H.walk) * Math.min(1, H.speed / 4) * 0.7;
